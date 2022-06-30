@@ -1,23 +1,23 @@
 {
     "visual": {
         "name": "horizontalBarChart",
-        "displayName": "HorizontalBarChart",
+        "displayName": "Custom horizontal bar chart",
         "guid": "horizontalBarChartCDDBFB5E982245ECAA3DAC91245BB7ED",
-        "visualClassName": "Visual",
+        "visualClassName": "BarChart",
         "version": "1.0.0",
-        "description": "",
+        "description": "Custom horizontal bar chart",
         "supportUrl": "",
-        "gitHubUrl": ""
+        "gitHubUrl": "https://github.com/maxim79135/PowerBI-visuals-custom-horizontal-chart"
     },
-    "apiVersion": "3.8.0",
+    "apiVersion": "4.2.0",
     "author": {
-        "name": "",
-        "email": ""
+        "name": "Maxim Sedov",
+        "email": "maxim79135@gmail.com"
     },
     "assets": {
         "icon": "assets/icon.png"
     },
-    "externalJS": null,
+    "externalJS": [],
     "style": "style/visual.less",
     "capabilities": "capabilities.json",
     "dependencies": null,

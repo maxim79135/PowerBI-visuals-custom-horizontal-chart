@@ -1,72 +1,53 @@
 {
     "dataRoles": [
         {
-            "displayName": "Category Data",
+            "displayName": "Category",
             "name": "category",
             "kind": "Grouping"
         },
         {
-            "displayName": "Measure Data",
+            "displayName": "Measure",
             "name": "measure",
+            "kind": "Measure"
+        },
+        {
+            "displayName": "Min value measure",
+            "name": "minMeasureValue",
+            "kind": "Measure"
+        },
+        {
+            "displayName": "Max value measure",
+            "name": "maxMeasureValue",
+            "kind": "Measure"
+        },
+        {
+            "displayName": "Tooltip",
+            "name": "tooltip",
             "kind": "Measure"
         }
     ],
-    "objects": {
-        "dataPoint": {
-            "displayName": "Data colors",
-            "properties": {
-                "defaultColor": {
-                    "displayName": "Default color",
-                    "type": {
-                        "fill": {
-                            "solid": {
-                                "color": true
-                            }
-                        }
-                    }
-                },
-                "showAllDataPoints": {
-                    "displayName": "Show all",
-                    "type": {
-                        "bool": true
-                    }
-                },
-                "fill": {
-                    "displayName": "Fill",
-                    "type": {
-                        "fill": {
-                            "solid": {
-                                "color": true
-                            }
-                        }
-                    }
-                },
-                "fillRule": {
-                    "displayName": "Color saturation",
-                    "type": {
-                        "fill": {}
-                    }
-                },
-                "fontSize": {
-                    "displayName": "Text Size",
-                    "type": {
-                        "formatting": {
-                            "fontSize": true
-                        }
-                    }
-                }
-            }
-        }
-    },
     "dataViewMappings": [
         {
+            "conditions": [
+                {
+                    "category": {
+                        "max": 1
+                    },
+                    "measure": {
+                        "max": 1
+                    },
+                    "minMeasureValue": {
+                        "max": 1
+                    },
+                    "maxMeasureValue": {
+                        "max": 1
+                    }
+                }
+            ],
             "categorical": {
                 "categories": {
                     "for": {
                         "in": "category"
-                    },
-                    "dataReductionAlgorithm": {
-                        "top": {}
                     }
                 },
                 "values": {
@@ -75,10 +56,38 @@
                             "bind": {
                                 "to": "measure"
                             }
+                        },
+                        {
+                            "bind": {
+                                "to": "minMeasureValue"
+                            }
+                        },
+                        {
+                            "bind": {
+                                "to": "maxMeasureValue"
+                            }
+                        },
+                        {
+                            "bind": {
+                                "to": "tooltip"
+                            }
                         }
                     ]
                 }
             }
         }
-    ]
+    ],
+    "tooltips": {
+        "supportedTypes": {
+            "default": true,
+            "canvas": true
+        },
+        "roles": [
+            "tooltips"
+        ],
+        "supportEnhancedTooltips": true
+    },
+    "supportsLandingPage": true,
+    "supportsEmptyDataView": true,
+    "suppressDefaultTitle": true
 }
