@@ -1,5 +1,5 @@
 /*
- *  Power BI Visualizations
+ *  Power BI Visual CLI
  *
  *  Copyright (c) Microsoft Corporation
  *  All rights reserved.
@@ -23,16 +23,34 @@
  *  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  *  THE SOFTWARE.
  */
-
 "use strict";
 
-import { dataViewObjectsParser } from "powerbi-visuals-utils-dataviewutils";
-import DataViewObjectsParser = dataViewObjectsParser.DataViewObjectsParser;
+import { BarSettings } from "../settings";
+import powerbi from "powerbi-visuals-api";
+import ISelectionId = powerbi.visuals.ISelectionId;
+import PrimitiveValue = powerbi.PrimitiveValue;
 
-export class BarShapes {
-  public color: string[];
+export interface IDataPoint {
+  id: number;
+  value: PrimitiveValue;
+  formattedValue: string;
+  category: string;
+  precision: number;
+  color: string;
+  selectionId: ISelectionId;
+  width: number;
+  currTextWidth: number;
+  selected: boolean;
 }
 
-export class BarSettings extends DataViewObjectsParser {
-  public barShapes: BarShapes = new BarShapes();
+export interface ITooltipValue {
+  displayName: string;
+  dataLabel: string;
+}
+
+export interface IBarChartViewModel {
+  settings: BarSettings;
+  dataMax: number;
+  dataPoints: IDataPoint[];
+  tooltipValues: ITooltipValue[];
 }

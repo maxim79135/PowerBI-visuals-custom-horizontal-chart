@@ -26,6 +26,23 @@
             "kind": "Measure"
         }
     ],
+    "objects": {
+        "barShape": {
+            "displayName": "Bar shape",
+            "properties": {
+                "color": {
+                    "displayName": "Color",
+                    "type": {
+                        "fill": {
+                            "solid": {
+                                "color": true
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    },
     "dataViewMappings": [
         {
             "conditions": [

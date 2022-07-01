@@ -27,6 +27,11 @@
 
 import "core-js/stable";
 import "./../style/visual.less";
+
+import { min } from "d3-array";
+import { scaleBand, scaleLinear } from "d3-scale";
+import { BaseType, select, Selection } from "d3-selection";
+
 import powerbi from "powerbi-visuals-api";
 import VisualConstructorOptions = powerbi.extensibility.visual.VisualConstructorOptions;
 import VisualUpdateOptions = powerbi.extensibility.visual.VisualUpdateOptions;
@@ -35,24 +40,209 @@ import EnumerateVisualObjectInstancesOptions = powerbi.EnumerateVisualObjectInst
 import VisualObjectInstance = powerbi.VisualObjectInstance;
 import DataView = powerbi.DataView;
 import VisualObjectInstanceEnumerationObject = powerbi.VisualObjectInstanceEnumerationObject;
+import IVisualHost = powerbi.extensibility.visual.IVisualHost;
+import VisualEnumerationInstanceKinds = powerbi.VisualEnumerationInstanceKinds;
+import { dataViewWildcard } from "powerbi-visuals-utils-dataviewutils";
 
-// import { VisualSettings } from "./settings";
+import { BarSettings } from "./settings";
+import { visualTransform } from "./model/ViewModelHelper";
+import { IBarChartViewModel } from "./model/ViewModel";
+
+/**
+ * An interface for reporting rendering events
+ */
+interface IVisualEventService {
+  /**
+   * Should be called just before the actual rendering was started.
+   * Usually at the very start of the update method.
+   *
+   * @param options - the visual update options received as update parameter
+   */
+  renderingStarted(options: VisualUpdateOptions): void;
+
+  /**
+   * Shoudl be called immediately after finishing successfull rendering.
+   *
+   * @param options - the visual update options received as update parameter
+   */
+  renderingFinished(options: VisualUpdateOptions): void;
+
+  /**
+   * Called when rendering failed with optional reason string
+   *
+   * @param options - the visual update options received as update parameter
+   * @param reason - the option failure reason string
+   */
+  renderingFailed(options: VisualUpdateOptions, reason?: string): void;
+}
+
 export class BarChart implements IVisual {
-  constructor(options: VisualConstructorOptions) {}
+  // TEMP!
+  private static Config = {
+    barPadding: 0.15,
+    fontScaleFactor: 3,
+    maxHeightScale: 3,
+    outerPaddingScale: 0.5,
+    solidOpacity: 1,
+    transparentOpacity: 0.5,
+    xAxisFontMultiplier: 0.04,
+    xScalePadding: 0.15,
+    xScaledMin: 30,
+  };
 
-  public update(options: VisualUpdateOptions) {}
+  private host: IVisualHost;
+  private model: IBarChartViewModel;
+  private events: IVisualEventService;
+
+  private svg: Selection<SVGElement, {}, HTMLElement, any>;
+  private divContainer: Selection<SVGElement, {}, HTMLElement, any>;
+  private barContainer: Selection<SVGElement, {}, HTMLElement, any>;
+
+  private width: number;
+  private height: number;
+
+  private readonly outerPadding = -0.1;
+
+  constructor(options: VisualConstructorOptions) {
+    this.host = options.host;
+    this.events = options.host.eventService;
+
+    let svg = (this.svg = select(options.element)
+      .append<SVGElement>("div")
+      .classed("divContainer", true)
+      .append<SVGElement>("svg")
+      .classed("barChart", true));
+
+    this.barContainer = svg
+      .append<SVGElement>("g")
+      .classed("barContainer", true);
+
+    this.divContainer = select(".divContainer");
+  }
+
+  public update(options: VisualUpdateOptions) {
+    this.model = visualTransform(options, this.host);
+    let settings = this.model.settings;
+    let dataPoints = this.model.dataPoints;
+    this.width = options.viewport.width;
+    this.height = options.viewport.height;
+
+    this.events.renderingStarted(options);
+
+    this.updateViewport(options);
+    this.drawBarShape();
+
+    this.events.renderingFinished(options);
+  }
+
+  public updateViewport(options: VisualUpdateOptions) {
+    let h = options.viewport.height + 5;
+    let w = options.viewport.width;
+
+    // update size canvas
+    this.divContainer.attr(
+      "style",
+      "width:" + w + "px;height:" + h + "px;overflow-y:auto;overflow-x:hidden;"
+    );
+    this.svg.attr("width", this.width);
+    this.svg.attr("height", this.height);
+
+    // empty rect to take full width for clickable area for clearing selection
+    let rectContainer = this.barContainer
+      .selectAll("rect.rect-container")
+      .data([0]);
+
+    rectContainer
+      .enter()
+      .append<SVGElement>("rect")
+      .classed("rect-container", true);
+
+    rectContainer.attr("width", this.width);
+    rectContainer.attr("height", this.height);
+    rectContainer.attr("fill", "transparent");
+  }
+
+  public drawBarShape() {
+    let outerPadding = this.outerPadding;
+    let yScale = scaleBand()
+      .domain(this.model.dataPoints.map((d) => d.category))
+      .rangeRound([5, this.height])
+      .padding(BarChart.Config.barPadding)
+      .paddingOuter(outerPadding);
+
+    // TEMP!
+    let offset = this.width * 0.1;
+    let xScale = scaleLinear()
+      .domain([0, this.model.dataMax])
+      .range([0, this.width - offset - 40]); // subtracting 40 for padding between the bar and the label
+
+    let bars = this.barContainer.selectAll("g.bar").data(this.model.dataPoints);
+
+    bars
+      .enter()
+      .append<SVGElement>("g")
+      .classed("bar", true)
+      .attr("x", BarChart.Config.xScalePadding) // .merge(bars)
+      .attr("y", (d) => yScale(d.category))
+      .attr("height", yScale.bandwidth())
+      .attr("width", (d) => xScale(<number>d.value))
+
+      .attr("selected", (d) => d.selected);
+
+    bars = this.barContainer.selectAll("g.bar").data(this.model.dataPoints);
+    let rects = bars.selectAll("rect.bar").data((d) => [d]);
+    let mergeElement = rects
+      .enter()
+      .append<SVGElement>("rect")
+      .classed("bar", true);
+    rects
+      .merge(mergeElement)
+      .attr("x", BarChart.Config.xScalePadding)
+      .attr("y", (d) => yScale(d.category))
+      .attr("height", yScale.bandwidth() / 1)
+      .attr("width", (d) => xScale(<number>d.value))
+      .attr("fill", "#333333")
+      .attr("fill-opacity", 1)
+      .attr("selected", (d) => d.selected);
+
+    bars.exit().remove();
+    rects.exit().remove();
+  }
 
   /**
    * This function gets called for each of the objects defined in the capabilities files and allows you to select which of the
    * objects and properties you want to expose to the users in the property pane.
    *
    */
-  // public enumerateObjectInstances(
-  //   options: EnumerateVisualObjectInstancesOptions
-  // ): VisualObjectInstance[] | VisualObjectInstanceEnumerationObject {
-  //   return BarSettings.enumerateObjectInstances(
-  //     this.settings || VisualSettings.getDefault(),
-  //     options
-  //   );
-  // }
+  public enumerateObjectInstances(
+    options: EnumerateVisualObjectInstancesOptions
+  ): VisualObjectInstance[] | VisualObjectInstanceEnumerationObject {
+    var objectName = options.objectName;
+    var objectEnumeration: VisualObjectInstance[] = [];
+    let model = this.model;
+
+    switch (objectName) {
+      case "barShape":
+        for (const dataPoint of model.dataPoints) {
+          objectEnumeration.push({
+            objectName: objectName,
+            displayName: dataPoint.category,
+            properties: {
+              color: model.settings.barShapes.color[dataPoint.id]
+                ? model.settings.barShapes.color[dataPoint.id]
+                : "#333333",
+            },
+            propertyInstanceKind: {
+              color: VisualEnumerationInstanceKinds.ConstantOrRule,
+            },
+            altConstantValueSelector: null,
+            selector: dataViewWildcard.createDataViewWildcardSelector(
+              dataViewWildcard.DataViewWildcardMatchingOption.InstancesAndTotals
+            ),
+          });
+        }
+        break;
+    }
+    return objectEnumeration;
+  }
 }
