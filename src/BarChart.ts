@@ -29,7 +29,7 @@ import "core-js/stable";
 import "./../style/visual.less";
 
 import { min } from "d3-array";
-import { scaleBand, scaleLinear } from "d3-scale";
+import { ScaleBand, scaleBand, ScaleLinear, scaleLinear } from "d3-scale";
 import { BaseType, select, Selection } from "d3-selection";
 
 import powerbi from "powerbi-visuals-api";
@@ -100,6 +100,8 @@ export class BarChart implements IVisual {
 
   private width: number;
   private height: number;
+  private yScale: ScaleBand<string>;
+  private xScale: ScaleLinear<number, number, never>;
 
   private readonly outerPadding = -0.1;
 
@@ -129,8 +131,19 @@ export class BarChart implements IVisual {
 
     this.events.renderingStarted(options);
 
+    this.yScale = scaleBand()
+      .domain(this.model.dataPoints.map((d) => d.category))
+      .rangeRound([5, this.height])
+      .padding(BarChart.Config.barPadding)
+      .paddingOuter(this.outerPadding);
+    // TEMP!
+    let offset = this.width * 0.1;
+    this.xScale = scaleLinear()
+      .domain([0, this.model.dataMax])
+      .range([0, this.width - offset - 40]); // subtracting 40 for padding between the bar and the label
+
     this.updateViewport(options);
-    this.drawBarShape();
+    this.drawBarContainer();
 
     this.events.renderingFinished(options);
   }
@@ -162,47 +175,41 @@ export class BarChart implements IVisual {
     rectContainer.attr("fill", "transparent");
   }
 
-  public drawBarShape() {
-    let outerPadding = this.outerPadding;
-    let yScale = scaleBand()
-      .domain(this.model.dataPoints.map((d) => d.category))
-      .rangeRound([5, this.height])
-      .padding(BarChart.Config.barPadding)
-      .paddingOuter(outerPadding);
-
-    // TEMP!
-    let offset = this.width * 0.1;
-    let xScale = scaleLinear()
-      .domain([0, this.model.dataMax])
-      .range([0, this.width - offset - 40]); // subtracting 40 for padding between the bar and the label
-
+  public drawBarContainer() {
     let bars = this.barContainer.selectAll("g.bar").data(this.model.dataPoints);
-
     bars
       .enter()
       .append<SVGElement>("g")
       .classed("bar", true)
       .attr("x", BarChart.Config.xScalePadding) // .merge(bars)
-      .attr("y", (d) => yScale(d.category))
-      .attr("height", yScale.bandwidth())
-      .attr("width", (d) => xScale(<number>d.value))
+      .attr("y", (d) => this.yScale(d.category))
+      .attr("height", this.yScale.bandwidth())
+      .attr("width", (d) => this.xScale(<number>d.value))
 
       .attr("selected", (d) => d.selected);
+    this.drawBarShape();
+  }
 
-    bars = this.barContainer.selectAll("g.bar").data(this.model.dataPoints);
+  public drawBarShape() {
+    // create bar shape
+    let bars = this.barContainer.selectAll("g.bar").data(this.model.dataPoints);
+
     let rects = bars.selectAll("rect.bar").data((d) => [d]);
+    console.log(rects);
+
     let mergeElement = rects
       .enter()
       .append<SVGElement>("rect")
       .classed("bar", true);
+
     rects
       .merge(mergeElement)
       .attr("x", BarChart.Config.xScalePadding)
-      .attr("y", (d) => yScale(d.category))
-      .attr("height", yScale.bandwidth() / 1)
-      .attr("width", (d) => xScale(<number>d.value))
-      .attr("fill", "#333333")
-      .attr("fill-opacity", 1)
+      .attr("y", (d) => this.yScale(d.category))
+      .attr("height", this.yScale.bandwidth())
+      .attr("width", (d) => this.xScale(<number>d.value))
+      .attr("fill", "#ee0000")
+      .attr("fill-opacity", 0.7)
       .attr("selected", (d) => d.selected);
 
     bars.exit().remove();
