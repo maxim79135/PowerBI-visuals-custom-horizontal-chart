@@ -31,11 +31,15 @@ import { IDataPoint, ITooltipValue, IBarChartViewModel } from "./ViewModel";
 import { getValue } from "../utils/objectEnumerationUtility";
 import { prepareMeasureText } from "../utils/dataLabelUtility";
 import { valueFormatter } from "powerbi-visuals-utils-formattingutils";
+import { ColorHelper } from "powerbi-visuals-utils-colorutils";
 
 import VisualUpdateOptions = powerbi.extensibility.visual.VisualUpdateOptions;
 import IVisualHost = powerbi.extensibility.visual.IVisualHost;
 import DataView = powerbi.DataView;
 import ValueTypeDescriptor = powerbi.ValueTypeDescriptor;
+import DataViewObjectPropertyIdentifier = powerbi.DataViewObjectPropertyIdentifier;
+import DataViewObjects = powerbi.DataViewObjects;
+import IColorPalette = powerbi.extensibility.IColorPalette;
 
 function parseSettings(dataView: DataView): BarSettings {
   return <BarSettings>BarSettings.parse(dataView);
@@ -46,6 +50,12 @@ export function visualTransform(
   options: VisualUpdateOptions,
   host: IVisualHost
 ): IBarChartViewModel {
+  const TeamsColorIdentifier: DataViewObjectPropertyIdentifier = {
+    objectName: "teams",
+    propertyName: "fill",
+  };
+  const colorPalette = host.colorPalette;
+
   let dataViews: DataView[] = options.dataViews;
   let dataPoints: IDataPoint[] = [];
   let settings: BarSettings = parseSettings(dataViews[0]);
@@ -91,7 +101,21 @@ export function visualTransform(
 
         dataPoint.id = i;
         dataPoint.value = valueType.numeric || valueType.integer ? value : null;
+        dataPoint.selectionId = host
+          .createSelectionIdBuilder()
+          .withCategory(category, i)
+          .createSelectionId();
 
+        if (category.objects && category.objects[i]) {
+          dataPoint.color = getValue(
+            category.objects ? category.objects[i] : null,
+            "barShape",
+            "color",
+            { solid: { color: "#333333" } }
+          ).solid.color;
+        } else {
+          dataPoint.color = settings.barShape.color;
+        }
         dataMax = <number>dataValue.maxLocal;
       }
     }

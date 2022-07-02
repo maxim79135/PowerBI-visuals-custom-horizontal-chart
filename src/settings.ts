@@ -29,10 +29,11 @@
 import { dataViewObjectsParser } from "powerbi-visuals-utils-dataviewutils";
 import DataViewObjectsParser = dataViewObjectsParser.DataViewObjectsParser;
 
-export class BarShapes {
-  public color: string[];
+export class BarShape {
+  public color: string = "#01b8aa";
+  public showAll: boolean = false;
 }
 
 export class BarSettings extends DataViewObjectsParser {
-  public barShapes: BarShapes = new BarShapes();
+  public barShape: BarShape = new BarShape();
 }

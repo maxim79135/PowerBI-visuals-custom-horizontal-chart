@@ -40,9 +40,12 @@ import EnumerateVisualObjectInstancesOptions = powerbi.EnumerateVisualObjectInst
 import VisualObjectInstance = powerbi.VisualObjectInstance;
 import DataView = powerbi.DataView;
 import VisualObjectInstanceEnumerationObject = powerbi.VisualObjectInstanceEnumerationObject;
+import VisualObjectInstanceEnumeration = powerbi.VisualObjectInstanceEnumeration;
 import IVisualHost = powerbi.extensibility.visual.IVisualHost;
 import VisualEnumerationInstanceKinds = powerbi.VisualEnumerationInstanceKinds;
+import ISelectionId = powerbi.visuals.ISelectionId;
 import { dataViewWildcard } from "powerbi-visuals-utils-dataviewutils";
+import { ColorHelper } from "powerbi-visuals-utils-colorutils";
 
 import { BarSettings } from "./settings";
 import { visualTransform } from "./model/ViewModelHelper";
@@ -124,8 +127,6 @@ export class BarChart implements IVisual {
 
   public update(options: VisualUpdateOptions) {
     this.model = visualTransform(options, this.host);
-    let settings = this.model.settings;
-    let dataPoints = this.model.dataPoints;
     this.width = options.viewport.width;
     this.height = options.viewport.height;
 
@@ -193,10 +194,7 @@ export class BarChart implements IVisual {
   public drawBarShape() {
     // create bar shape
     let bars = this.barContainer.selectAll("g.bar").data(this.model.dataPoints);
-
     let rects = bars.selectAll("rect.bar").data((d) => [d]);
-    console.log(rects);
-
     let mergeElement = rects
       .enter()
       .append<SVGElement>("rect")
@@ -208,7 +206,7 @@ export class BarChart implements IVisual {
       .attr("y", (d) => this.yScale(d.category))
       .attr("height", this.yScale.bandwidth())
       .attr("width", (d) => this.xScale(<number>d.value))
-      .attr("fill", "#ee0000")
+      .attr("fill", (d) => d.color)
       .attr("fill-opacity", 0.7)
       .attr("selected", (d) => d.selected);
 
@@ -223,33 +221,56 @@ export class BarChart implements IVisual {
    */
   public enumerateObjectInstances(
     options: EnumerateVisualObjectInstancesOptions
-  ): VisualObjectInstance[] | VisualObjectInstanceEnumerationObject {
-    var objectName = options.objectName;
-    var objectEnumeration: VisualObjectInstance[] = [];
-    let model = this.model;
+  ): VisualObjectInstanceEnumeration {
+    const instances = BarSettings.enumerateObjectInstances(
+      this.model.settings,
+      options
+    );
+    console.log(instances);
 
-    switch (objectName) {
-      case "barShape":
-        for (const dataPoint of model.dataPoints) {
-          objectEnumeration.push({
-            objectName: objectName,
-            displayName: dataPoint.category,
-            properties: {
-              color: model.settings.barShapes.color[dataPoint.id]
-                ? model.settings.barShapes.color[dataPoint.id]
-                : "#333333",
-            },
-            propertyInstanceKind: {
-              color: VisualEnumerationInstanceKinds.ConstantOrRule,
-            },
-            altConstantValueSelector: null,
-            selector: dataViewWildcard.createDataViewWildcardSelector(
-              dataViewWildcard.DataViewWildcardMatchingOption.InstancesAndTotals
-            ),
-          });
-        }
-        break;
+    // const instances = [];
+
+    if (
+      options.objectName == "barShape" &&
+      this.model.settings.barShape.showAll
+    ) {
+      this.enumerateCategories(instances, options.objectName);
     }
-    return objectEnumeration;
+
+    return instances;
+  }
+
+  private enumerateCategories(
+    instanceEnumeration: VisualObjectInstanceEnumeration,
+    objectName: string
+  ) {
+    this.model.dataPoints.forEach((dataPoint) => {
+      this.addAnInstanceToEnumeration(instanceEnumeration, {
+        displayName: dataPoint.category,
+        objectName: objectName,
+        selector: ColorHelper.normalizeSelector(
+          dataPoint.selectionId.getSelector(),
+          false
+        ),
+        properties: {
+          color: dataPoint.color,
+        },
+      });
+    });
+  }
+
+  private addAnInstanceToEnumeration(
+    instanceEnumeration: VisualObjectInstanceEnumeration,
+    instance: VisualObjectInstance
+  ): void {
+    if (
+      (<VisualObjectInstanceEnumerationObject>instanceEnumeration).instances
+    ) {
+      (<VisualObjectInstanceEnumerationObject>(
+        instanceEnumeration
+      )).instances.push(instance);
+    } else {
+      (<VisualObjectInstance[]>instanceEnumeration).push(instance);
+    }
   }
 }

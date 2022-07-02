@@ -31,13 +31,19 @@
             "displayName": "Bar shape",
             "properties": {
                 "color": {
-                    "displayName": "Color",
+                    "displayName": "Default color",
                     "type": {
                         "fill": {
                             "solid": {
                                 "color": true
                             }
                         }
+                    }
+                },
+                "showAll": {
+                    "displayName": "Show all",
+                    "type": {
+                        "bool": true
                     }
                 }
             }
