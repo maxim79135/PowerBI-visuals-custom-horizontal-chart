@@ -105,6 +105,19 @@ export function visualTransform(
 
         dataPoint.id = i;
         dataPoint.value = valueType.numeric || valueType.integer ? value : null;
+        dataPoint.formattedValue = prepareMeasureText(
+          value,
+          valueType,
+          dataValue.objects
+            ? <string>dataValue.objects[0]["general"]["formatString"]
+            : valueFormatter.getFormatStringByColumn(dataValue.source),
+          settings.yAxis.displayUnit,
+          settings.yAxis.decimalPlaces,
+          false,
+          false,
+          "",
+          host.locale
+        );
         if (category) {
           dataPoint.selectionId = host
             .createSelectionIdBuilder()

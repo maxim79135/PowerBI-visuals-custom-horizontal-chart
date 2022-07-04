@@ -34,6 +34,29 @@ export class BarShape {
   public showAll: boolean = false;
 }
 
+export class XAxis {
+  public textSize: number = 10;
+  public fontFamily: string = "segoe";
+  public fontColor: string = "#333333";
+  public isItalic: boolean = false;
+  public isBold: boolean = false;
+  public wordWrap_: boolean = false;
+}
+
+export class YAxis {
+  public textSize: number = 10;
+  public fontFamily: string = "segoe";
+  public fontColor: string = "#333333";
+  public isItalic: boolean = false;
+  public isBold: boolean = false;
+  public wordWrap_: boolean = false;
+  public paddingLeft: number = 5;
+  public displayUnit: number = 0;
+  public decimalPlaces: number = 0;
+}
+
 export class BarSettings extends DataViewObjectsParser {
   public barShape: BarShape = new BarShape();
+  public xAxis: XAxis = new XAxis();
+  public yAxis: YAxis = new YAxis();
 }

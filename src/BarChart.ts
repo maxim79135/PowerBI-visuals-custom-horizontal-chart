@@ -44,12 +44,17 @@ import VisualObjectInstanceEnumeration = powerbi.VisualObjectInstanceEnumeration
 import IVisualHost = powerbi.extensibility.visual.IVisualHost;
 import VisualEnumerationInstanceKinds = powerbi.VisualEnumerationInstanceKinds;
 import ISelectionId = powerbi.visuals.ISelectionId;
+import TextProperties = interfaces.TextProperties;
+
 import { dataViewWildcard } from "powerbi-visuals-utils-dataviewutils";
 import { ColorHelper } from "powerbi-visuals-utils-colorutils";
-
 import { BarSettings } from "./settings";
 import { visualTransform } from "./model/ViewModelHelper";
 import { IBarChartViewModel } from "./model/ViewModel";
+import {
+  textMeasurementService,
+  interfaces,
+} from "powerbi-visuals-utils-formattingutils";
 
 /**
  * An interface for reporting rendering events
@@ -91,6 +96,7 @@ export class BarChart implements IVisual {
     xAxisFontMultiplier: 0.04,
     xScalePadding: 0.15,
     xScaledMin: 30,
+    lineRangePadding: 2,
   };
 
   private host: IVisualHost;
@@ -106,7 +112,7 @@ export class BarChart implements IVisual {
   private yScale: ScaleBand<string>;
   private xScale: ScaleLinear<number, number, never>;
 
-  private readonly outerPadding = -0.1;
+  private readonly outerPadding = 0.1;
 
   constructor(options: VisualConstructorOptions) {
     this.host = options.host;
@@ -194,6 +200,7 @@ export class BarChart implements IVisual {
       .attr("selected", (d) => d.selected);
     this.drawBarShape();
     this.drawValueRangeShape();
+    this.drawYAxis();
   }
 
   public drawBarShape() {
@@ -212,29 +219,63 @@ export class BarChart implements IVisual {
       .attr("height", this.yScale.bandwidth())
       .attr("width", (d) => this.xScale(<number>d.value))
       .attr("fill", (d) => d.color)
-      .attr("fill-opacity", 0.7)
+      .attr("fill-opacity", 1)
       .attr("selected", (d) => d.selected);
 
     bars.exit().remove();
     rects.exit().remove();
   }
 
+  // tslint:disable-next-line: max-func-body-length
   public drawValueRangeShape() {
     const defs = this.svg.append("defs");
 
     let bars = this.barContainer.selectAll("g.bar").data(this.model.dataPoints);
+
+    // drac background rect
+    let backgroundRangeRect = bars
+      .selectAll("rect.backgroundRangeRect")
+      .data((d) => [d]);
+    let mergeElement = backgroundRangeRect
+      .enter()
+      .append<SVGElement>("rect")
+      .classed("backgroundRangeRect", true);
+    backgroundRangeRect
+      .merge(mergeElement)
+      .attr("x", (d) => this.xScale(<number>d.minValue))
+      .attr(
+        "y",
+        (d) => this.yScale(d.category) - BarChart.Config.lineRangePadding
+      )
+      .attr(
+        "height",
+        this.yScale.bandwidth() + 2 * BarChart.Config.lineRangePadding
+      )
+      .attr("width", (d) =>
+        this.xScale(<number>d.maxValue - <number>d.minValue)
+      )
+      .style("fill", "#ffffff")
+      .attr("fill-opacity", 0.5);
+
+    // draw value range rect with pattern
     let valueRangesRect = bars
       .selectAll("rect.valueRangesRect")
       .data((d) => [d]);
-    let mergeElement = valueRangesRect
+    mergeElement = valueRangesRect
       .enter()
       .append<SVGElement>("rect")
       .classed("valueRangesRect", true);
     valueRangesRect
       .merge(mergeElement)
       .attr("x", (d) => this.xScale(<number>d.minValue))
-      .attr("y", (d) => this.yScale(d.category))
-      .attr("height", this.yScale.bandwidth())
+      .attr(
+        "y",
+        (d) => this.yScale(d.category) - BarChart.Config.lineRangePadding
+      )
+      .attr(
+        "height",
+        this.yScale.bandwidth() + 2 * BarChart.Config.lineRangePadding
+      )
       .attr("width", (d) =>
         this.xScale(<number>d.maxValue - <number>d.minValue)
       )
@@ -253,7 +294,7 @@ export class BarChart implements IVisual {
           .attr("fill", d.color);
         return "url(#" + d.category + ")";
       })
-      .attr("fill-opacity", 0.4);
+      .attr("fill-opacity", 0.5);
 
     if (this.model.dataPoints && this.model.dataPoints[0].minValue) {
       let minValueLine = bars.selectAll("line.minValueLine").data((d) => [d]);
@@ -264,9 +305,18 @@ export class BarChart implements IVisual {
       minValueLine
         .merge(mergeElement)
         .attr("x1", (d) => this.xScale(<number>d.minValue))
-        .attr("y1", (d) => this.yScale(d.category))
+        .attr(
+          "y1",
+          (d) => this.yScale(d.category) - BarChart.Config.lineRangePadding
+        )
         .attr("x2", (d) => this.xScale(<number>d.minValue))
-        .attr("y2", (d) => this.yScale(d.category) + this.yScale.bandwidth())
+        .attr(
+          "y2",
+          (d) =>
+            this.yScale(d.category) +
+            this.yScale.bandwidth() +
+            BarChart.Config.lineRangePadding
+        )
         .style("stroke", (d) => d.color)
         .style("stroke-width", 4);
       minValueLine.exit().remove();
@@ -281,9 +331,18 @@ export class BarChart implements IVisual {
       maxValueLine
         .merge(mergeElement)
         .attr("x1", (d) => this.xScale(<number>d.maxValue))
-        .attr("y1", (d) => this.yScale(d.category))
+        .attr(
+          "y1",
+          (d) => this.yScale(d.category) - BarChart.Config.lineRangePadding
+        )
         .attr("x2", (d) => this.xScale(<number>d.maxValue))
-        .attr("y2", (d) => this.yScale(d.category) + this.yScale.bandwidth())
+        .attr(
+          "y2",
+          (d) =>
+            this.yScale(d.category) +
+            this.yScale.bandwidth() +
+            BarChart.Config.lineRangePadding
+        )
         .style("stroke", (d) => d.color)
         .style("stroke-width", 4);
       maxValueLine.exit().remove();
@@ -291,6 +350,41 @@ export class BarChart implements IVisual {
 
     defs.exit().remove();
     valueRangesRect.exit().remove();
+  }
+
+  public drawYAxis() {
+    let settings = this.model.settings;
+    let bars = this.barContainer.selectAll("g.bar").data(this.model.dataPoints);
+    let yAxisText = bars.selectAll("text.yAxis-text").data((d) => [d]);
+    let mergeElement = yAxisText
+      .enter()
+      .append<SVGElement>("text")
+      .classed("yAxis-text", true);
+
+    yAxisText
+      .merge(mergeElement)
+      .attr("x", settings.yAxis.paddingLeft)
+      .attr("y", (d) => {
+        let textProperties: TextProperties = {
+          fontFamily: settings.yAxis.fontFamily,
+          fontSize: settings.yAxis.textSize + "pt",
+          text: d.formattedValue,
+          fontWeight: settings.yAxis.isBold ? "bold" : "",
+          fontStyle: settings.yAxis.isItalic ? "italic" : "",
+        };
+        return (
+          this.yScale(d.category) +
+          this.yScale.bandwidth() -
+          textMeasurementService.measureSvgTextHeight(textProperties) / 4
+        );
+      })
+      .attr("height", this.yScale.bandwidth())
+      .attr("font-size", settings.yAxis.textSize)
+      .attr("fill", settings.yAxis.fontColor)
+      .text((d) => d.formattedValue)
+      .each((d) => (d.width = this.xScale(<number>d.value)));
+
+    yAxisText.exit().remove();
   }
 
   /**
@@ -311,6 +405,8 @@ export class BarChart implements IVisual {
       this.model.settings.barShape.showAll
     ) {
       this.enumerateCategories(instances, options.objectName);
+    } else if (options.objectName == "yAxis") {
+      this.enumerateYAxis(instances, options.objectName);
     }
 
     return instances;
@@ -332,6 +428,27 @@ export class BarChart implements IVisual {
           color: dataPoint.color,
         },
       });
+    });
+  }
+
+  private enumerateYAxis(
+    instanceEnumeration: VisualObjectInstanceEnumeration,
+    objectName: string
+  ) {
+    this.addAnInstanceToEnumeration(instanceEnumeration, {
+      objectName,
+      properties: {
+        paddingLeft: this.model.settings.yAxis.paddingLeft,
+      },
+      selector: null,
+      validValues: {
+        paddingLeft: {
+          numberRange: {
+            min: 5,
+            max: 25,
+          },
+        },
+      },
     });
   }
 
