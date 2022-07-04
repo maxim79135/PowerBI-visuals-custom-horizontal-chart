@@ -18,6 +18,7 @@
     "core-js": "3.2.1",
     "d3": "5.12.0",
     "minimist": "^1.2.6",
+    "patternfills": "^0.4.1",
     "powerbi-visuals-api": "^4.2.0",
     "powerbi-visuals-utils-colorutils": "^2.3.1",
     "powerbi-visuals-utils-dataviewutils": "^2.4.1",

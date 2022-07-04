@@ -127,6 +127,8 @@ export class BarChart implements IVisual {
 
   public update(options: VisualUpdateOptions) {
     this.model = visualTransform(options, this.host);
+    console.log(this.model);
+
     this.width = options.viewport.width;
     this.height = options.viewport.height;
 
@@ -174,6 +176,8 @@ export class BarChart implements IVisual {
     rectContainer.attr("width", this.width);
     rectContainer.attr("height", this.height);
     rectContainer.attr("fill", "transparent");
+
+    this.svg.selectAll("defs").remove();
   }
 
   public drawBarContainer() {
@@ -189,6 +193,7 @@ export class BarChart implements IVisual {
 
       .attr("selected", (d) => d.selected);
     this.drawBarShape();
+    this.drawValueRangeShape();
   }
 
   public drawBarShape() {
@@ -214,6 +219,80 @@ export class BarChart implements IVisual {
     rects.exit().remove();
   }
 
+  public drawValueRangeShape() {
+    const defs = this.svg.append("defs");
+
+    let bars = this.barContainer.selectAll("g.bar").data(this.model.dataPoints);
+    let valueRangesRect = bars
+      .selectAll("rect.valueRangesRect")
+      .data((d) => [d]);
+    let mergeElement = valueRangesRect
+      .enter()
+      .append<SVGElement>("rect")
+      .classed("valueRangesRect", true);
+    valueRangesRect
+      .merge(mergeElement)
+      .attr("x", (d) => this.xScale(<number>d.minValue))
+      .attr("y", (d) => this.yScale(d.category))
+      .attr("height", this.yScale.bandwidth())
+      .attr("width", (d) =>
+        this.xScale(<number>d.maxValue - <number>d.minValue)
+      )
+      .style("fill", (d) => {
+        defs
+          .append("pattern")
+          .attr("id", d.category)
+          .attr("width", "8")
+          .attr("height", "8")
+          .attr("patternUnits", "userSpaceOnUse")
+          .attr("patternTransform", "rotate(-45)")
+          .append("rect")
+          .attr("width", "4")
+          .attr("height", "8")
+          .attr("transform", "translate(0,0)")
+          .attr("fill", d.color);
+        return "url(#" + d.category + ")";
+      })
+      .attr("fill-opacity", 0.4);
+
+    if (this.model.dataPoints && this.model.dataPoints[0].minValue) {
+      let minValueLine = bars.selectAll("line.minValueLine").data((d) => [d]);
+      mergeElement = minValueLine
+        .enter()
+        .append<SVGElement>("line")
+        .classed("minValueLine", true);
+      minValueLine
+        .merge(mergeElement)
+        .attr("x1", (d) => this.xScale(<number>d.minValue))
+        .attr("y1", (d) => this.yScale(d.category))
+        .attr("x2", (d) => this.xScale(<number>d.minValue))
+        .attr("y2", (d) => this.yScale(d.category) + this.yScale.bandwidth())
+        .style("stroke", (d) => d.color)
+        .style("stroke-width", 4);
+      minValueLine.exit().remove();
+    } else bars.selectAll("line.minValueLine").remove();
+
+    if (this.model.dataPoints && this.model.dataPoints[0].maxValue) {
+      let maxValueLine = bars.selectAll("line.maxValueLine").data((d) => [d]);
+      mergeElement = maxValueLine
+        .enter()
+        .append<SVGElement>("line")
+        .classed("maxValueLine", true);
+      maxValueLine
+        .merge(mergeElement)
+        .attr("x1", (d) => this.xScale(<number>d.maxValue))
+        .attr("y1", (d) => this.yScale(d.category))
+        .attr("x2", (d) => this.xScale(<number>d.maxValue))
+        .attr("y2", (d) => this.yScale(d.category) + this.yScale.bandwidth())
+        .style("stroke", (d) => d.color)
+        .style("stroke-width", 4);
+      maxValueLine.exit().remove();
+    } else bars.selectAll("line.maxValueLine").remove();
+
+    defs.exit().remove();
+    valueRangesRect.exit().remove();
+  }
+
   /**
    * This function gets called for each of the objects defined in the capabilities files and allows you to select which of the
    * objects and properties you want to expose to the users in the property pane.
@@ -226,9 +305,6 @@ export class BarChart implements IVisual {
       this.model.settings,
       options
     );
-    console.log(instances);
-
-    // const instances = [];
 
     if (
       options.objectName == "barShape" &&

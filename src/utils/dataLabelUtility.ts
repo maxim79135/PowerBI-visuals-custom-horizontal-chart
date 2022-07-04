@@ -30,6 +30,7 @@ function getValueType(valueType: ValueTypeDescriptor): string {
   return result;
 }
 
+// tslint:disable-next-line: export-name
 export function prepareMeasureText(
   value: any,
   valueType: ValueTypeDescriptor,

@@ -40,12 +40,13 @@ import ValueTypeDescriptor = powerbi.ValueTypeDescriptor;
 import DataViewObjectPropertyIdentifier = powerbi.DataViewObjectPropertyIdentifier;
 import DataViewObjects = powerbi.DataViewObjects;
 import IColorPalette = powerbi.extensibility.IColorPalette;
+import PrimitiveValue = powerbi.PrimitiveValue;
 
 function parseSettings(dataView: DataView): BarSettings {
   return <BarSettings>BarSettings.parse(dataView);
 }
 
-// tslint:disable-next-line: export-name
+// tslint:disable-next-line: max-func-body-length disable-next-line: export-name
 export function visualTransform(
   options: VisualUpdateOptions,
   host: IVisualHost
@@ -78,18 +79,21 @@ export function visualTransform(
     ? dataCategorical.categories[dataCategorical.categories.length - 1]
     : null;
   let categories = category ? category.values : [""];
-  let dataMax: number;
+  let dataMax: number = -1;
 
   for (let i = 0; i < categories.length; i++) {
     let dataPoint = <IDataPoint>{};
 
     for (let ii = 0; ii < dataCategorical.values!.length; ii++) {
       let dataValue = dataCategorical.values![ii];
-      let value: any = dataValue.values[i];
+      let value: PrimitiveValue = dataValue.values[i];
+      let maxLocal: PrimitiveValue = <number>dataValue.maxLocal;
       let valueType = dataValue.source.type;
 
       if (!dataValue.source.roles) break;
       if (!valueType) valueType = {};
+
+      if (!maxLocal) maxLocal = <number>value;
 
       if (dataValue.source.roles["measure"]) {
         if (categories[i]) {
@@ -101,12 +105,19 @@ export function visualTransform(
 
         dataPoint.id = i;
         dataPoint.value = valueType.numeric || valueType.integer ? value : null;
-        dataPoint.selectionId = host
-          .createSelectionIdBuilder()
-          .withCategory(category, i)
-          .createSelectionId();
+        if (category) {
+          dataPoint.selectionId = host
+            .createSelectionIdBuilder()
+            .withCategory(category, i)
+            .createSelectionId();
+        } else {
+          dataPoint.selectionId = host
+            .createSelectionIdBuilder()
+            .withMeasure(dataCategorical.values[0].source.queryName)
+            .createSelectionId();
+        }
 
-        if (category.objects && category.objects[i]) {
+        if (category && category.objects && category.objects[i]) {
           dataPoint.color = getValue(
             category.objects ? category.objects[i] : null,
             "barShape",
@@ -116,7 +127,21 @@ export function visualTransform(
         } else {
           dataPoint.color = settings.barShape.color;
         }
-        dataMax = <number>dataValue.maxLocal;
+        dataMax = maxLocal;
+      }
+      if (dataValue.source.roles["minMeasureValue"]) {
+        dataPoint.minValue =
+          valueType.numeric || valueType.integer ? value : null;
+      }
+      if (dataValue.source.roles["maxMeasureValue"]) {
+        dataPoint.maxValue =
+          valueType.numeric || valueType.integer ? value : null;
+        if (maxLocal > dataMax) dataMax = maxLocal;
+      }
+      if (dataPoint.minValue > dataPoint.maxValue) {
+        let tmp = dataPoint.minValue;
+        dataPoint.minValue = dataPoint.maxValue;
+        dataPoint.maxValue = tmp;
       }
     }
 

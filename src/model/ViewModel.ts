@@ -34,6 +34,10 @@ export interface IDataPoint {
   id: number;
   value: PrimitiveValue;
   formattedValue: string;
+  minValue: PrimitiveValue;
+  minFormattedValue: string;
+  maxValue: PrimitiveValue;
+  maxFormattedValue: string;
   category: string;
   precision: number;
   color: string;

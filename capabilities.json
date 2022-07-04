@@ -110,6 +110,9 @@
         ],
         "supportEnhancedTooltips": true
     },
+    "sorting": {
+        "default": {}
+    },
     "supportsLandingPage": true,
     "supportsEmptyDataView": true,
     "suppressDefaultTitle": true
