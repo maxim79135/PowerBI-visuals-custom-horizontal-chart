@@ -38,12 +38,11 @@ export interface IDataPoint {
   minFormattedValue: string;
   maxValue: PrimitiveValue;
   maxFormattedValue: string;
+  rangeFormattedValue: string;
   category: string;
-  precision: number;
   color: string;
   selectionId: ISelectionId;
   width: number;
-  currTextWidth: number;
   selected: boolean;
 }
 

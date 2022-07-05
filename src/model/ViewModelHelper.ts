@@ -145,16 +145,60 @@ export function visualTransform(
       if (dataValue.source.roles["minMeasureValue"]) {
         dataPoint.minValue =
           valueType.numeric || valueType.integer ? value : null;
+        dataPoint.minFormattedValue = prepareMeasureText(
+          value,
+          valueType,
+          dataValue.objects
+            ? <string>dataValue.objects[0]["general"]["formatString"]
+            : valueFormatter.getFormatStringByColumn(dataValue.source),
+          settings.yAxis.displayUnit,
+          settings.xAxis.decimalPlaces,
+          false,
+          false,
+          "",
+          host.locale
+        );
+        if (maxLocal > dataMax) dataMax = maxLocal;
       }
       if (dataValue.source.roles["maxMeasureValue"]) {
         dataPoint.maxValue =
           valueType.numeric || valueType.integer ? value : null;
+        dataPoint.maxFormattedValue = prepareMeasureText(
+          value,
+          valueType,
+          dataValue.objects
+            ? <string>dataValue.objects[0]["general"]["formatString"]
+            : valueFormatter.getFormatStringByColumn(dataValue.source),
+          settings.yAxis.displayUnit,
+          settings.xAxis.decimalPlaces,
+          false,
+          false,
+          "",
+          host.locale
+        );
         if (maxLocal > dataMax) dataMax = maxLocal;
       }
       if (dataPoint.minValue > dataPoint.maxValue) {
         let tmp = dataPoint.minValue;
         dataPoint.minValue = dataPoint.maxValue;
         dataPoint.maxValue = tmp;
+      }
+      if (dataPoint.minValue && dataPoint.maxValue) {
+        if (
+          dataPoint.minFormattedValue.endsWith("%") &&
+          dataPoint.maxFormattedValue.endsWith("%")
+        ) {
+          dataPoint.rangeFormattedValue =
+            dataPoint.minFormattedValue.substring(
+              0,
+              dataPoint.minFormattedValue.length - 1
+            ) +
+            "-" +
+            dataPoint.maxFormattedValue;
+        } else {
+          dataPoint.rangeFormattedValue =
+            dataPoint.minFormattedValue + "-" + dataPoint.maxFormattedValue;
+        }
       }
     }
 

@@ -32,24 +32,29 @@ import DataViewObjectsParser = dataViewObjectsParser.DataViewObjectsParser;
 export class BarShape {
   public color: string = "#01b8aa";
   public showAll: boolean = false;
+  public minHeight: number = 30;
+  public barPadding: number = 15;
 }
 
 export class XAxis {
   public textSize: number = 10;
   public fontFamily: string = "segoe";
-  public fontColor: string = "#333333";
+  public categoryColor: string = "#333333";
+  public rangeColor: string = "#333333";
   public isItalic: boolean = false;
   public isBold: boolean = false;
-  public wordWrap_: boolean = false;
+  public decimalPlaces: number = 0;
+  // public wordWrap_: boolean = false;
 }
 
 export class YAxis {
+  public textPosition: string = "insideBar";
   public textSize: number = 10;
   public fontFamily: string = "segoe";
   public fontColor: string = "#333333";
   public isItalic: boolean = false;
   public isBold: boolean = false;
-  public wordWrap_: boolean = false;
+  // public wordWrap_: boolean = false;
   public paddingLeft: number = 5;
   public displayUnit: number = 0;
   public decimalPlaces: number = 0;

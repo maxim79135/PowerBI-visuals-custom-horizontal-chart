@@ -139,9 +139,20 @@
                         ]
                     }
                 },
-                "fontColor": {
-                    "displayName": "Font color",
-                    "displayNameKey": "fontColor",
+                "categoryColor": {
+                    "displayName": "Category color",
+                    "displayNameKey": "categoryColor",
+                    "type": {
+                        "fill": {
+                            "solid": {
+                                "color": true
+                            }
+                        }
+                    }
+                },
+                "rangeColor": {
+                    "displayName": "Range color",
+                    "displayNameKey": "rangeColor",
                     "type": {
                         "fill": {
                             "solid": {
@@ -170,12 +181,37 @@
                     "type": {
                         "bool": true
                     }
+                },
+                "decimalPlaces": {
+                    "displayName": "Decimal places",
+                    "displayNameKey": "precision",
+                    "type": {
+                        "integer": true
+                    }
                 }
             }
         },
         "yAxis": {
             "displayName": "Y axis",
             "properties": {
+                "textPosition": {
+                    "displayName": "Text position",
+                    "displayNameKey": "textPosition",
+                    "type": {
+                        "enumeration": [
+                            {
+                                "displayName": "Inside the bar",
+                                "displayNameKey": "insideBar",
+                                "value": "insideBar"
+                            },
+                            {
+                                "displayName": "From the left bar",
+                                "displayNameKey": "leftBar",
+                                "value": "leftBar"
+                            }
+                        ]
+                    }
+                },
                 "textSize": {
                     "displayName": "Font size",
                     "displayNameKey": "textSize",
@@ -359,6 +395,20 @@
                     "displayName": "Show all",
                     "type": {
                         "bool": true
+                    }
+                },
+                "barPadding": {
+                    "displayName": "Padding between bars",
+                    "displayNameKey": "barPadding",
+                    "type": {
+                        "integer": true
+                    }
+                },
+                "minHeight": {
+                    "displayName": "Min bar height (px)",
+                    "displayNameKey": "minHeight",
+                    "type": {
+                        "integer": true
                     }
                 }
             }

@@ -112,8 +112,6 @@ export class BarChart implements IVisual {
   private yScale: ScaleBand<string>;
   private xScale: ScaleLinear<number, number, never>;
 
-  private readonly outerPadding = 0.1;
-
   constructor(options: VisualConstructorOptions) {
     this.host = options.host;
     this.events = options.host.eventService;
@@ -140,17 +138,6 @@ export class BarChart implements IVisual {
 
     this.events.renderingStarted(options);
 
-    this.yScale = scaleBand()
-      .domain(this.model.dataPoints.map((d) => d.category))
-      .rangeRound([5, this.height])
-      .padding(BarChart.Config.barPadding)
-      .paddingOuter(this.outerPadding);
-    // TEMP!
-    let offset = this.width * 0.1;
-    this.xScale = scaleLinear()
-      .domain([0, this.model.dataMax])
-      .range([0, this.width - offset - 40]); // subtracting 40 for padding between the bar and the label
-
     this.updateViewport(options);
     this.drawBarContainer();
 
@@ -166,6 +153,42 @@ export class BarChart implements IVisual {
       "style",
       "width:" + w + "px;height:" + h + "px;overflow-y:auto;overflow-x:hidden;"
     );
+
+    // Calculate max height of each bar based on the total height of the visual
+    let xScaledMax = this.height / BarChart.Config.maxHeightScale;
+    let xScaledMin = this.model.settings.barShape.minHeight;
+    let outerPadding = 0.05;
+
+    // calcX is the calculated height of the bar+inner padding that will be required if we simply
+    // distribute the height with the bar count (no scrolling)
+    let calcX =
+      this.height /
+      (2 * BarChart.Config.outerPaddingScale -
+        BarChart.Config.xScalePadding +
+        this.model.dataPoints.length);
+    // calcHeight is the height required for the entire bar chart
+    // if min allowed bar height is used. (This is needed for setting the scroll height)
+    let calcHeight =
+      (-2 * outerPadding -
+        BarChart.Config.xScalePadding +
+        this.model.dataPoints.length) *
+      xScaledMin;
+
+    if (calcX < xScaledMin && calcHeight > this.height) {
+      this.height = calcHeight;
+    }
+
+    this.yScale = scaleBand()
+      .domain(this.model.dataPoints.map((d) => d.category))
+      .rangeRound([5, this.height])
+      .padding(this.model.settings.barShape.barPadding / 100)
+      .paddingOuter(outerPadding);
+    // TEMP!
+    let offset = this.width * 0.1;
+    this.xScale = scaleLinear()
+      .domain([0, this.model.dataMax])
+      .range([0, this.width - offset - 40]); // subtracting 40 for padding between the bar and the label
+
     this.svg.attr("width", this.width);
     this.svg.attr("height", this.height);
 
@@ -201,6 +224,7 @@ export class BarChart implements IVisual {
     this.drawBarShape();
     this.drawValueRangeShape();
     this.drawYAxis();
+    this.drawXAxis();
   }
 
   public drawBarShape() {
@@ -288,7 +312,7 @@ export class BarChart implements IVisual {
           .attr("patternUnits", "userSpaceOnUse")
           .attr("patternTransform", "rotate(-45)")
           .append("rect")
-          .attr("width", "4")
+          .attr("width", "2")
           .attr("height", "8")
           .attr("transform", "translate(0,0)")
           .attr("fill", d.color);
@@ -369,8 +393,6 @@ export class BarChart implements IVisual {
           fontFamily: settings.yAxis.fontFamily,
           fontSize: settings.yAxis.textSize + "pt",
           text: d.formattedValue,
-          fontWeight: settings.yAxis.isBold ? "bold" : "",
-          fontStyle: settings.yAxis.isItalic ? "italic" : "",
         };
         return (
           this.yScale(d.category) +
@@ -381,10 +403,128 @@ export class BarChart implements IVisual {
       .attr("height", this.yScale.bandwidth())
       .attr("font-size", settings.yAxis.textSize)
       .attr("fill", settings.yAxis.fontColor)
-      .text((d) => d.formattedValue)
+      .style("font-weight", settings.yAxis.isBold ? "bold" : "")
+      .style("font-style", settings.yAxis.isItalic ? "italic" : "")
+      .text((d) => {
+        let textProperties: TextProperties = {
+          fontFamily: settings.yAxis.fontFamily,
+          fontSize: settings.yAxis.textSize + "pt",
+          text: d.formattedValue,
+        };
+        let width = this.xScale(<number>d.value);
+        let formattedText = textMeasurementService.getTailoredTextOrDefault(
+          textProperties,
+          width
+        );
+        textProperties.text = formattedText;
+        if (
+          textMeasurementService.measureSvgTextWidth(textProperties) > width
+        ) {
+          return null;
+        } else return formattedText;
+      })
       .each((d) => (d.width = this.xScale(<number>d.value)));
 
     yAxisText.exit().remove();
+  }
+
+  public drawXAxis() {
+    let settings = this.model.settings;
+    let bars = this.barContainer.selectAll("g.bar").data(this.model.dataPoints);
+    let xAxisText = bars.selectAll("text.xAxis-text").data((d) => [d]);
+    let mergeElement = xAxisText
+      .enter()
+      .append<SVGElement>("text")
+      .classed("xAxis-text", true);
+    xAxisText = xAxisText
+      .merge(mergeElement)
+      .attr("x", (d) => {
+        let textProperties: TextProperties = {
+          fontFamily: settings.xAxis.fontFamily,
+          fontSize: settings.xAxis.textSize + "pt",
+          text: d.category,
+        };
+        let width = this.xScale(<number>d.value);
+        if (d.maxValue > d.value) width = this.xScale(<number>d.maxValue);
+
+        if (
+          textMeasurementService.measureSvgTextWidth(textProperties) > width
+        ) {
+          return textMeasurementService.measureSvgTextWidth(textProperties);
+        } else return width + 8;
+      })
+      .attr("y", (d) => {
+        let textProperties: TextProperties = {
+          fontFamily: settings.xAxis.fontFamily,
+          fontSize: settings.xAxis.textSize + "pt",
+          text: d.category,
+        };
+        let height =
+          textMeasurementService.measureSvgTextHeight(textProperties);
+        console.log(
+          this.yScale.bandwidth(),
+          height,
+          (this.yScale.bandwidth() - height * 2) / 2
+        );
+
+        return (
+          this.yScale(d.category) + height / 2 + this.yScale.bandwidth() * 0.15
+          // (this.yScale.bandwidth() - height * 2) / 2
+        );
+      })
+      .attr("height", this.yScale.bandwidth())
+      .attr("font-size", settings.xAxis.textSize);
+
+    // add span for category name
+    let tSpanCategotyText = xAxisText
+      .selectAll("tspan.tspan-category-text")
+      .data((d) => [d]);
+    mergeElement = tSpanCategotyText
+      .enter()
+      .append("tspan")
+      .classed("tspan-category-text", true);
+    tSpanCategotyText
+      .merge(mergeElement)
+      .text((d) => d.category)
+      .attr("fill", settings.xAxis.categoryColor);
+
+    // add span for range values
+    let tSpanRangeText = xAxisText
+      .selectAll("tspan.tspan-range-text")
+      .data((d) => [d]);
+    mergeElement = tSpanRangeText
+      .enter()
+      .append("tspan")
+      .classed("tspan-range-text", true);
+    tSpanRangeText
+      .merge(mergeElement)
+      .text((d) => d.rangeFormattedValue)
+      .attr("x", (d) => {
+        let textProperties: TextProperties = {
+          fontFamily: settings.xAxis.fontFamily,
+          fontSize: settings.xAxis.textSize + "pt",
+          text: d.rangeFormattedValue,
+        };
+        let width = this.xScale(<number>d.value);
+        if (d.maxValue > d.value) width = this.xScale(<number>d.maxValue);
+
+        if (
+          textMeasurementService.measureSvgTextWidth(textProperties) > width
+        ) {
+          return textMeasurementService.measureSvgTextWidth(textProperties);
+        } else return width + 8;
+      })
+      .attr(
+        "y",
+        (d) => this.yScale(d.category) + this.yScale.bandwidth() * 0.85
+      )
+      .attr("fill", settings.xAxis.rangeColor)
+      .style("font-weight", settings.xAxis.isBold ? "bold" : "")
+      .style("font-style", settings.xAxis.isItalic ? "italic" : "");
+
+    tSpanCategotyText.exit().remove();
+    tSpanRangeText.exit().remove();
+    xAxisText.exit().remove();
   }
 
   /**
@@ -399,14 +539,40 @@ export class BarChart implements IVisual {
       this.model.settings,
       options
     );
-
-    if (
-      options.objectName == "barShape" &&
-      this.model.settings.barShape.showAll
-    ) {
-      this.enumerateCategories(instances, options.objectName);
-    } else if (options.objectName == "yAxis") {
-      this.enumerateYAxis(instances, options.objectName);
+    const objectName = options.objectName;
+    switch (objectName) {
+      case "barShape":
+        if (this.model.settings.barShape.showAll)
+          this.enumerateCategories(instances, objectName);
+        this.addAnInstanceToEnumeration(instances, {
+          objectName,
+          properties: {
+            barPadding: this.model.settings.barShape.barPadding,
+            minHeight: this.model.settings.barShape.minHeight,
+          },
+          selector: null,
+          validValues: {
+            barPadding: {
+              numberRange: {
+                min: 5,
+                max: 50,
+              },
+            },
+            minHeight: {
+              numberRange: {
+                min: 10,
+                max: 50,
+              },
+            },
+          },
+        });
+        break;
+      case "yAxis":
+        this.enumerateYAxis(instances, objectName);
+        break;
+      case "xAxis":
+        this.enumerateXAxis(instances, objectName);
+        break;
     }
 
     return instances;
@@ -439,6 +605,7 @@ export class BarChart implements IVisual {
       objectName,
       properties: {
         paddingLeft: this.model.settings.yAxis.paddingLeft,
+        decimalPlaces: this.model.settings.yAxis.decimalPlaces,
       },
       selector: null,
       validValues: {
@@ -446,6 +613,33 @@ export class BarChart implements IVisual {
           numberRange: {
             min: 5,
             max: 25,
+          },
+        },
+        decimalPlaces: {
+          numberRange: {
+            min: 0,
+            max: 9,
+          },
+        },
+      },
+    });
+  }
+
+  private enumerateXAxis(
+    instanceEnumeration: VisualObjectInstanceEnumeration,
+    objectName: string
+  ) {
+    this.addAnInstanceToEnumeration(instanceEnumeration, {
+      objectName,
+      properties: {
+        decimalPlaces: this.model.settings.xAxis.decimalPlaces,
+      },
+      selector: null,
+      validValues: {
+        decimalPlaces: {
+          numberRange: {
+            min: 0,
+            max: 9,
           },
         },
       },
