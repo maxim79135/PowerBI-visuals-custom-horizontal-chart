@@ -27,6 +27,7 @@
 
 import "core-js/stable";
 import "./../style/visual.less";
+import "regenerator-runtime/runtime";
 
 import { min } from "d3-array";
 import { ScaleBand, scaleBand, ScaleLinear, scaleLinear } from "d3-scale";
@@ -45,16 +46,22 @@ import IVisualHost = powerbi.extensibility.visual.IVisualHost;
 import VisualEnumerationInstanceKinds = powerbi.VisualEnumerationInstanceKinds;
 import ISelectionId = powerbi.visuals.ISelectionId;
 import TextProperties = interfaces.TextProperties;
+import VisualTooltipDataItem = powerbi.extensibility.VisualTooltipDataItem;
 
 import { dataViewWildcard } from "powerbi-visuals-utils-dataviewutils";
 import { ColorHelper } from "powerbi-visuals-utils-colorutils";
 import { BarSettings } from "./settings";
 import { visualTransform } from "./model/ViewModelHelper";
-import { IBarChartViewModel } from "./model/ViewModel";
+import { IBarChartViewModel, IDataPoint } from "./model/ViewModel";
 import {
   textMeasurementService,
   interfaces,
 } from "powerbi-visuals-utils-formattingutils";
+import {
+  createTooltipServiceWrapper,
+  ITooltipServiceWrapper,
+  TooltipEventArgs as ITooltipEventArgs,
+} from "powerbi-visuals-utils-tooltiputils";
 
 /**
  * An interface for reporting rendering events
@@ -102,6 +109,7 @@ export class BarChart implements IVisual {
   private host: IVisualHost;
   private model: IBarChartViewModel;
   private events: IVisualEventService;
+  private tooltipServiceWrapper: ITooltipServiceWrapper;
 
   private svg: Selection<SVGElement, {}, HTMLElement, any>;
   private divContainer: Selection<SVGElement, {}, HTMLElement, any>;
@@ -115,6 +123,10 @@ export class BarChart implements IVisual {
   constructor(options: VisualConstructorOptions) {
     this.host = options.host;
     this.events = options.host.eventService;
+    this.tooltipServiceWrapper = createTooltipServiceWrapper(
+      options.host.tooltipService,
+      options.element
+    );
 
     let svg = (this.svg = select(options.element)
       .append<SVGElement>("div")
@@ -140,6 +152,11 @@ export class BarChart implements IVisual {
 
     this.updateViewport(options);
     this.drawBarContainer();
+    this.tooltipServiceWrapper.addTooltip(
+      this.barContainer.selectAll(".bar"),
+      (tooltipEvent: IDataPoint) => this.getTooltipData(tooltipEvent),
+      (tooltipEvent: IDataPoint) => tooltipEvent.selectionId
+    );
 
     this.events.renderingFinished(options);
   }
@@ -184,10 +201,12 @@ export class BarChart implements IVisual {
       .padding(this.model.settings.barShape.barPadding / 100)
       .paddingOuter(outerPadding);
     // TEMP!
-    let offset = this.width * 0.1;
+    let offset = this.width * 0.2;
     this.xScale = scaleLinear()
-      .domain([0, this.model.dataMax])
-      .range([0, this.width - offset - 40]); // subtracting 40 for padding between the bar and the label
+      .domain([Math.min(2 * this.model.dataMin, 0), this.model.dataMax])
+      .range([0, this.width - offset])
+      .nice(); // subtracting 40 for padding between the bar and the label
+    if (this.model.dataMax < 0) this.xScale.domain([this.model.dataMin, 0]);
 
     this.svg.attr("width", this.width);
     this.svg.attr("height", this.height);
@@ -238,10 +257,14 @@ export class BarChart implements IVisual {
 
     rects
       .merge(mergeElement)
-      .attr("x", BarChart.Config.xScalePadding)
+      .attr("x", (d) =>
+        d.value >= 0 ? this.xScale(0) : this.xScale(<number>d.value)
+      )
       .attr("y", (d) => this.yScale(d.category))
       .attr("height", this.yScale.bandwidth())
-      .attr("width", (d) => this.xScale(<number>d.value))
+      .attr("width", (d) =>
+        Math.abs(this.xScale(<number>d.value) - this.xScale(0))
+      )
       .attr("fill", (d) => d.color)
       .attr("fill-opacity", 1)
       .attr("selected", (d) => d.selected);
@@ -318,7 +341,7 @@ export class BarChart implements IVisual {
           .attr("fill", d.color);
         return "url(#" + d.category + ")";
       })
-      .attr("fill-opacity", 0.5);
+      .attr("fill-opacity", 0.8);
 
     if (this.model.dataPoints && this.model.dataPoints[0].minValue) {
       let minValueLine = bars.selectAll("line.minValueLine").data((d) => [d]);
@@ -387,7 +410,12 @@ export class BarChart implements IVisual {
 
     yAxisText
       .merge(mergeElement)
-      .attr("x", settings.yAxis.paddingLeft)
+      .attr(
+        "x",
+        (d) =>
+          (d.value >= 0 ? this.xScale(0) : this.xScale(<number>d.value)) +
+          settings.yAxis.paddingLeft
+      )
       .attr("y", (d) => {
         let textProperties: TextProperties = {
           fontFamily: settings.yAxis.fontFamily,
@@ -411,14 +439,16 @@ export class BarChart implements IVisual {
           fontSize: settings.yAxis.textSize + "pt",
           text: d.formattedValue,
         };
-        let width = this.xScale(<number>d.value);
+        let width = Math.abs(this.xScale(<number>d.value) - this.xScale(0));
         let formattedText = textMeasurementService.getTailoredTextOrDefault(
           textProperties,
           width
         );
         textProperties.text = formattedText;
         if (
-          textMeasurementService.measureSvgTextWidth(textProperties) > width
+          textMeasurementService.measureSvgTextWidth(textProperties) +
+            settings.yAxis.paddingLeft >
+          width
         ) {
           return null;
         } else return formattedText;
@@ -461,11 +491,11 @@ export class BarChart implements IVisual {
         };
         let height =
           textMeasurementService.measureSvgTextHeight(textProperties);
-        console.log(
-          this.yScale.bandwidth(),
-          height,
-          (this.yScale.bandwidth() - height * 2) / 2
-        );
+        // console.log(
+        //   this.yScale.bandwidth(),
+        //   height,
+        //   (this.yScale.bandwidth() - height * 2) / 2
+        // );
 
         return (
           this.yScale(d.category) + height / 2 + this.yScale.bandwidth() * 0.15
@@ -525,6 +555,24 @@ export class BarChart implements IVisual {
     tSpanCategotyText.exit().remove();
     tSpanRangeText.exit().remove();
     xAxisText.exit().remove();
+  }
+
+  public getTooltipData(value: IDataPoint): VisualTooltipDataItem[] {
+    let tooltip: VisualTooltipDataItem[] = [];
+    tooltip.push({
+      // header: value.category,
+      displayName: value.category,
+      value: value.formattedValue,
+    });
+
+    value.tooltipValues.forEach((tooltipValue) => {
+      tooltip.push({
+        displayName: tooltipValue.displayName,
+        value: tooltipValue.dataLabel,
+      });
+    });
+
+    return tooltip;
   }
 
   /**

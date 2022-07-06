@@ -70,8 +70,8 @@ export function visualTransform(
     return {
       settings: settings,
       dataMax: 0,
+      dataMin: 0,
       dataPoints: dataPoints,
-      tooltipValues: [],
     };
 
   let dataCategorical = dataViews[0].categorical;
@@ -80,20 +80,24 @@ export function visualTransform(
     : null;
   let categories = category ? category.values : [""];
   let dataMax: number = -1;
+  let dataMin: number = Number.MAX_SAFE_INTEGER;
 
   for (let i = 0; i < categories.length; i++) {
     let dataPoint = <IDataPoint>{};
+    dataPoint.tooltipValues = [];
 
     for (let ii = 0; ii < dataCategorical.values!.length; ii++) {
       let dataValue = dataCategorical.values![ii];
       let value: PrimitiveValue = dataValue.values[i];
       let maxLocal: PrimitiveValue = <number>dataValue.maxLocal;
+      let minLocal: PrimitiveValue = <number>dataValue.minLocal;
       let valueType = dataValue.source.type;
 
       if (!dataValue.source.roles) break;
       if (!valueType) valueType = {};
 
       if (!maxLocal) maxLocal = <number>value;
+      if (!minLocal) minLocal = <number>value;
 
       if (dataValue.source.roles["measure"]) {
         if (categories[i]) {
@@ -118,29 +122,6 @@ export function visualTransform(
           "",
           host.locale
         );
-        if (category) {
-          dataPoint.selectionId = host
-            .createSelectionIdBuilder()
-            .withCategory(category, i)
-            .createSelectionId();
-        } else {
-          dataPoint.selectionId = host
-            .createSelectionIdBuilder()
-            .withMeasure(dataCategorical.values[0].source.queryName)
-            .createSelectionId();
-        }
-
-        if (category && category.objects && category.objects[i]) {
-          dataPoint.color = getValue(
-            category.objects ? category.objects[i] : null,
-            "barShape",
-            "color",
-            { solid: { color: "#333333" } }
-          ).solid.color;
-        } else {
-          dataPoint.color = settings.barShape.color;
-        }
-        dataMax = maxLocal;
       }
       if (dataValue.source.roles["minMeasureValue"]) {
         dataPoint.minValue =
@@ -158,7 +139,6 @@ export function visualTransform(
           "",
           host.locale
         );
-        if (maxLocal > dataMax) dataMax = maxLocal;
       }
       if (dataValue.source.roles["maxMeasureValue"]) {
         dataPoint.maxValue =
@@ -176,12 +156,41 @@ export function visualTransform(
           "",
           host.locale
         );
-        if (maxLocal > dataMax) dataMax = maxLocal;
       }
+
+      if (dataValue.source.roles["tooltip"]) {
+        let tooltipValue: ITooltipValue = {
+          displayName: dataValue.source.displayName,
+          dataLabel: prepareMeasureText(
+            value,
+            valueType,
+            dataValue.objects
+              ? <string>dataValue.objects[0]["general"]["formatString"]
+              : valueFormatter.getFormatStringByColumn(dataValue.source),
+            1,
+            0,
+            false,
+            false,
+            "",
+            "ru-RU"
+          ),
+        };
+        dataPoint.tooltipValues.push(tooltipValue);
+      }
+
+      if (!dataValue.source.roles["tooltip"]) {
+        if (maxLocal > dataMax) dataMax = maxLocal;
+        if (minLocal < dataMin) dataMin = minLocal;
+      }
+
       if (dataPoint.minValue > dataPoint.maxValue) {
         let tmp = dataPoint.minValue;
         dataPoint.minValue = dataPoint.maxValue;
         dataPoint.maxValue = tmp;
+
+        tmp = dataPoint.minFormattedValue;
+        dataPoint.minFormattedValue = dataPoint.maxFormattedValue;
+        dataPoint.maxFormattedValue = tmp;
       }
       if (dataPoint.minValue && dataPoint.maxValue) {
         if (
@@ -195,11 +204,34 @@ export function visualTransform(
             ) +
             "-" +
             dataPoint.maxFormattedValue;
-        } else {
-          dataPoint.rangeFormattedValue =
-            dataPoint.minFormattedValue + "-" + dataPoint.maxFormattedValue;
+        } else if (settings.yAxis.displayUnit > 1) {
+          dataPoint.minFormattedValue = dataPoint.minFormattedValue.split(" ")[0]
         }
+        dataPoint.rangeFormattedValue =
+          dataPoint.minFormattedValue + "-" + dataPoint.maxFormattedValue;
       }
+    }
+
+    if (category && category.objects && category.objects[i]) {
+      dataPoint.color = getValue(
+        category.objects ? category.objects[i] : null,
+        "barShape",
+        "color",
+        { solid: { color: "#333333" } }
+      ).solid.color;
+    } else {
+      dataPoint.color = settings.barShape.color;
+    }
+    if (category) {
+      dataPoint.selectionId = host
+        .createSelectionIdBuilder()
+        .withCategory(category, i)
+        .createSelectionId();
+    } else {
+      dataPoint.selectionId = host
+        .createSelectionIdBuilder()
+        .withMeasure(dataCategorical.values[0].source.queryName)
+        .createSelectionId();
     }
 
     dataPoints.push(dataPoint);
@@ -208,7 +240,7 @@ export function visualTransform(
   return {
     settings: settings,
     dataMax: dataMax,
+    dataMin: dataMin,
     dataPoints: dataPoints,
-    tooltipValues: [],
   };
 }

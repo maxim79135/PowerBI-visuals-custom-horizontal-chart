@@ -44,6 +44,7 @@ export interface IDataPoint {
   selectionId: ISelectionId;
   width: number;
   selected: boolean;
+  tooltipValues: ITooltipValue[];
 }
 
 export interface ITooltipValue {
@@ -54,6 +55,6 @@ export interface ITooltipValue {
 export interface IBarChartViewModel {
   settings: BarSettings;
   dataMax: number;
+  dataMin: number;
   dataPoints: IDataPoint[];
-  tooltipValues: ITooltipValue[];
 }
