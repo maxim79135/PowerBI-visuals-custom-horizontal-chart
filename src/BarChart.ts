@@ -211,7 +211,7 @@ export class BarChart implements IVisual {
     // TEMP!
     let offset = this.width * 0.2;
     this.xScale = scaleLinear()
-      .domain([Math.min(2 * this.model.dataMin, 0), this.model.dataMax])
+      .domain([1.5 * Math.min(this.model.dataMin, 0), this.model.dataMax])
       .range([0, this.width - offset])
       .nice(); // subtracting 40 for padding between the bar and the label
     if (this.model.dataMax < 0) this.xScale.domain([this.model.dataMin, 0]);
@@ -306,9 +306,11 @@ export class BarChart implements IVisual {
         "height",
         this.yScale.bandwidth() + 2 * BarChart.Config.lineRangePadding
       )
-      .attr("width", (d) =>
-        this.xScale(<number>d.maxValue - <number>d.minValue)
-      )
+      .attr("width", (d) => {
+        let minX = this.xScale(<number>d.minValue);
+        let maxX = this.xScale(<number>d.maxValue);
+        return maxX - minX;
+      })
       .style("fill", "#ffffff")
       .attr("fill-opacity", BarChart.Config.backgroundOpacity);
 
@@ -331,9 +333,11 @@ export class BarChart implements IVisual {
         "height",
         this.yScale.bandwidth() + 2 * BarChart.Config.lineRangePadding
       )
-      .attr("width", (d) =>
-        this.xScale(<number>d.maxValue - <number>d.minValue)
-      )
+      .attr("width", (d) => {
+        let minX = this.xScale(<number>d.minValue);
+        let maxX = this.xScale(<number>d.maxValue);
+        return maxX - minX;
+      })
       .style("fill", (d) => {
         defs
           .append("pattern")
@@ -418,12 +422,20 @@ export class BarChart implements IVisual {
 
     yAxisText
       .merge(mergeElement)
-      .attr(
-        "x",
-        (d) =>
-          (d.value >= 0 ? this.xScale(0) : this.xScale(<number>d.value)) +
-          settings.yAxis.paddingLeft
-      )
+      .attr("x", (d) => {
+        let textProperties: TextProperties = {
+          fontFamily: settings.yAxis.fontFamily,
+          fontSize: settings.yAxis.textSize + "pt",
+          text: d.formattedValue,
+        };
+        if (d.value < 0) {
+          return (
+            this.xScale(0) -
+            textMeasurementService.measureSvgTextWidth(textProperties) -
+            settings.yAxis.paddingLeft
+          );
+        } else return this.xScale(0) + settings.yAxis.paddingLeft;
+      })
       .attr("y", (d) => {
         let textProperties: TextProperties = {
           fontFamily: settings.yAxis.fontFamily,
@@ -466,6 +478,7 @@ export class BarChart implements IVisual {
     yAxisText.exit().remove();
   }
 
+  // tslint:disable-next-line: max-func-body-length
   public drawXAxis() {
     let settings = this.model.settings;
     let bars = this.barContainer.selectAll("g.bar").data(this.model.dataPoints);
@@ -477,19 +490,34 @@ export class BarChart implements IVisual {
     xAxisText = xAxisText
       .merge(mergeElement)
       .attr("x", (d) => {
-        let textProperties: TextProperties = {
+        let categoryTextProperties: TextProperties = {
           fontFamily: settings.xAxis.fontFamily,
           fontSize: settings.xAxis.textSize + "pt",
           text: d.category,
         };
-        let width = this.xScale(<number>d.value);
-        if (d.maxValue > d.value) width = this.xScale(<number>d.maxValue);
+        let rangeTextProperties: TextProperties = {
+          fontFamily: settings.xAxis.fontFamily,
+          fontSize: settings.xAxis.textSize + "pt",
+          text: d.rangeFormattedValue,
+        };
+        let maxWidth = Math.max(
+          textMeasurementService.measureSvgTextWidth(categoryTextProperties),
+          textMeasurementService.measureSvgTextWidth(rangeTextProperties)
+        );
+        let width = Math.abs(this.xScale(<number>d.value) - this.xScale(0));
+        if (d.minValue)
+          if (d.maxValue > d.value) width = this.xScale(<number>d.maxValue);
 
         if (
-          textMeasurementService.measureSvgTextWidth(textProperties) > width
+          textMeasurementService.measureSvgTextWidth(categoryTextProperties) >
+          width
         ) {
-          return textMeasurementService.measureSvgTextWidth(textProperties);
-        } else return width + 8;
+          return textMeasurementService.measureSvgTextWidth(
+            categoryTextProperties
+          );
+        } else if (d.value < 0) {
+          return this.xScale(<number>d.minValue) - maxWidth;
+        } else return this.xScale(<number>d.maxValue) + 8;
       })
       .attr("y", (d) => {
         let textProperties: TextProperties = {
@@ -532,19 +560,34 @@ export class BarChart implements IVisual {
       .merge(mergeElement)
       .text((d) => d.rangeFormattedValue)
       .attr("x", (d) => {
-        let textProperties: TextProperties = {
+        let categoryTextProperties: TextProperties = {
+          fontFamily: settings.xAxis.fontFamily,
+          fontSize: settings.xAxis.textSize + "pt",
+          text: d.category,
+        };
+        let rangeTextProperties: TextProperties = {
           fontFamily: settings.xAxis.fontFamily,
           fontSize: settings.xAxis.textSize + "pt",
           text: d.rangeFormattedValue,
         };
-        let width = this.xScale(<number>d.value);
-        if (d.maxValue > d.value) width = this.xScale(<number>d.maxValue);
+        let maxWidth = Math.max(
+          textMeasurementService.measureSvgTextWidth(categoryTextProperties),
+          textMeasurementService.measureSvgTextWidth(rangeTextProperties)
+        );
+        let width = Math.abs(this.xScale(<number>d.value) - this.xScale(0));
+        if (d.minValue)
+          if (d.maxValue > d.value) width = this.xScale(<number>d.maxValue);
 
         if (
-          textMeasurementService.measureSvgTextWidth(textProperties) > width
+          textMeasurementService.measureSvgTextWidth(categoryTextProperties) >
+          width
         ) {
-          return textMeasurementService.measureSvgTextWidth(textProperties);
-        } else return width + 8;
+          return textMeasurementService.measureSvgTextWidth(
+            categoryTextProperties
+          );
+        } else if (d.value < 0) {
+          return this.xScale(<number>d.minValue) - maxWidth;
+        } else return this.xScale(<number>d.maxValue) + 8;
       })
       .attr(
         "y",
@@ -599,20 +642,18 @@ export class BarChart implements IVisual {
       .selectAll("rect.valueRangesRect")
       .data((d) => [d]);
 
-      area.on("click", () => {
+    area.on("click", () => {
+      if (this.selectionManager.hasSelection()) {
+        this.selectionManager.clear().then(() => {
+          this.syncSelectionState(bars, []);
+          this.syncSelectionState(rects, []);
+          this.syncSelectionState(valueRangesRect, []);
+        });
+      }
 
-        if (this.selectionManager.hasSelection()) {
-            this.selectionManager.clear().then(() => {
-                this.syncSelectionState(bars, []);
-                this.syncSelectionState(rects, []);
-                this.syncSelectionState(valueRangesRect, []);
-            });
-        }
-  
-        bars.attr("fill-opacity", BarChart.Config.barOpacity);
-        rects.attr("fill-opacity", BarChart.Config.barOpacity);
-        valueRangesRect.attr("fill-opacity", BarChart.Config.valueRangesOpacity);
-  
+      bars.attr("fill-opacity", BarChart.Config.barOpacity);
+      rects.attr("fill-opacity", BarChart.Config.barOpacity);
+      valueRangesRect.attr("fill-opacity", BarChart.Config.valueRangesOpacity);
     });
 
     bars.on("click", (d) => {
