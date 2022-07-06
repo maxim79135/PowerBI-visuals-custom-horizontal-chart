@@ -32,6 +32,7 @@ import "regenerator-runtime/runtime";
 import { min } from "d3-array";
 import { ScaleBand, scaleBand, ScaleLinear, scaleLinear } from "d3-scale";
 import { BaseType, select, Selection } from "d3-selection";
+const getEvent = () => require("d3-selection").event;
 
 import powerbi from "powerbi-visuals-api";
 import VisualConstructorOptions = powerbi.extensibility.visual.VisualConstructorOptions;
@@ -47,6 +48,7 @@ import VisualEnumerationInstanceKinds = powerbi.VisualEnumerationInstanceKinds;
 import ISelectionId = powerbi.visuals.ISelectionId;
 import TextProperties = interfaces.TextProperties;
 import VisualTooltipDataItem = powerbi.extensibility.VisualTooltipDataItem;
+import ISelectionManager = powerbi.extensibility.ISelectionManager;
 
 import { dataViewWildcard } from "powerbi-visuals-utils-dataviewutils";
 import { ColorHelper } from "powerbi-visuals-utils-colorutils";
@@ -104,12 +106,16 @@ export class BarChart implements IVisual {
     xScalePadding: 0.15,
     xScaledMin: 30,
     lineRangePadding: 2,
+    valueRangesOpacity: 0.8,
+    backgroundOpacity: 0.5,
+    barOpacity: 1,
   };
 
   private host: IVisualHost;
   private model: IBarChartViewModel;
   private events: IVisualEventService;
   private tooltipServiceWrapper: ITooltipServiceWrapper;
+  private selectionManager: ISelectionManager;
 
   private svg: Selection<SVGElement, {}, HTMLElement, any>;
   private divContainer: Selection<SVGElement, {}, HTMLElement, any>;
@@ -127,6 +133,7 @@ export class BarChart implements IVisual {
       options.host.tooltipService,
       options.element
     );
+    this.selectionManager = options.host.createSelectionManager();
 
     let svg = (this.svg = select(options.element)
       .append<SVGElement>("div")
@@ -157,6 +164,7 @@ export class BarChart implements IVisual {
       (tooltipEvent: IDataPoint) => this.getTooltipData(tooltipEvent),
       (tooltipEvent: IDataPoint) => tooltipEvent.selectionId
     );
+    this.synSelections();
 
     this.events.renderingFinished(options);
   }
@@ -266,7 +274,7 @@ export class BarChart implements IVisual {
         Math.abs(this.xScale(<number>d.value) - this.xScale(0))
       )
       .attr("fill", (d) => d.color)
-      .attr("fill-opacity", 1)
+      .attr("fill-opacity", BarChart.Config.barOpacity)
       .attr("selected", (d) => d.selected);
 
     bars.exit().remove();
@@ -302,7 +310,7 @@ export class BarChart implements IVisual {
         this.xScale(<number>d.maxValue - <number>d.minValue)
       )
       .style("fill", "#ffffff")
-      .attr("fill-opacity", 0.5);
+      .attr("fill-opacity", BarChart.Config.backgroundOpacity);
 
     // draw value range rect with pattern
     let valueRangesRect = bars
@@ -341,7 +349,7 @@ export class BarChart implements IVisual {
           .attr("fill", d.color);
         return "url(#" + d.category + ")";
       })
-      .attr("fill-opacity", 0.8);
+      .attr("fill-opacity", BarChart.Config.valueRangesOpacity);
 
     if (this.model.dataPoints && this.model.dataPoints[0].minValue) {
       let minValueLine = bars.selectAll("line.minValueLine").data((d) => [d]);
@@ -491,12 +499,6 @@ export class BarChart implements IVisual {
         };
         let height =
           textMeasurementService.measureSvgTextHeight(textProperties);
-        // console.log(
-        //   this.yScale.bandwidth(),
-        //   height,
-        //   (this.yScale.bandwidth() - height * 2) / 2
-        // );
-
         return (
           this.yScale(d.category) + height / 2 + this.yScale.bandwidth() * 0.15
           // (this.yScale.bandwidth() - height * 2) / 2
@@ -559,11 +561,25 @@ export class BarChart implements IVisual {
 
   public getTooltipData(value: IDataPoint): VisualTooltipDataItem[] {
     let tooltip: VisualTooltipDataItem[] = [];
+
     tooltip.push({
       // header: value.category,
       displayName: value.category,
       value: value.formattedValue,
     });
+
+    if (value.minValue) {
+      tooltip.push({
+        displayName: value.displayNameMinValue,
+        value: value.minFormattedValue,
+      });
+    }
+    if (value.maxValue) {
+      tooltip.push({
+        displayName: value.displayNameMaxValue,
+        value: value.maxFormattedValue,
+      });
+    }
 
     value.tooltipValues.forEach((tooltipValue) => {
       tooltip.push({
@@ -573,6 +589,90 @@ export class BarChart implements IVisual {
     });
 
     return tooltip;
+  }
+
+  public synSelections() {
+    let area = select("rect.rect-container");
+    let bars = this.barContainer.selectAll("g.bar").data(this.model.dataPoints);
+    let rects = bars.selectAll("rect.bar").data((d) => [d]);
+    let valueRangesRect = bars
+      .selectAll("rect.valueRangesRect")
+      .data((d) => [d]);
+
+      area.on("click", () => {
+
+        if (this.selectionManager.hasSelection()) {
+            this.selectionManager.clear().then(() => {
+                this.syncSelectionState(bars, []);
+                this.syncSelectionState(rects, []);
+                this.syncSelectionState(valueRangesRect, []);
+            });
+        }
+  
+        bars.attr("fill-opacity", BarChart.Config.barOpacity);
+        rects.attr("fill-opacity", BarChart.Config.barOpacity);
+        valueRangesRect.attr("fill-opacity", BarChart.Config.valueRangesOpacity);
+  
+    });
+
+    bars.on("click", (d) => {
+      const mouseEvent: MouseEvent = getEvent();
+      const isCtrlPressed: boolean = mouseEvent.ctrlKey;
+      this.selectionManager
+        .select(d.selectionId, isCtrlPressed)
+        .then((ids: ISelectionId[]) => {
+          this.syncSelectionState(bars, ids, BarChart.Config.barOpacity);
+          this.syncSelectionState(rects, ids, BarChart.Config.barOpacity);
+          this.syncSelectionState(
+            valueRangesRect,
+            ids,
+            BarChart.Config.valueRangesOpacity
+          );
+        });
+    });
+  }
+
+  private syncSelectionState(
+    selection: Selection<BaseType, IDataPoint, BaseType, any>,
+    selectionIds: ISelectionId[],
+    opacity: number = null
+  ): void {
+    if (!selection || !selectionIds) {
+      return;
+    }
+
+    if (!selectionIds.length) {
+      selection.style("fill-opacity", null);
+      return;
+    }
+
+    selection.each((dataPoint, i, nodes) => {
+      const isSelected: boolean = this.isSelectionIdInArray(
+        selectionIds,
+        dataPoint.selectionId
+      );
+      select(nodes[i]).style(
+        "fill-opacity",
+        isSelected ? opacity : opacity / 2
+      );
+      select(nodes[i]).style(
+        "stroke-opacity",
+        isSelected ? opacity : opacity / 2
+      );
+    });
+  }
+
+  private isSelectionIdInArray(
+    selectionIds: ISelectionId[],
+    selectionId: ISelectionId
+  ): boolean {
+    if (!selectionIds || !selectionId) {
+      return false;
+    }
+
+    return selectionIds.some((currentSelectionId: ISelectionId) => {
+      return currentSelectionId.includes(selectionId);
+    });
   }
 
   /**
