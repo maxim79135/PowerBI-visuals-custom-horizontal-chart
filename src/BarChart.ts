@@ -458,6 +458,7 @@ export class BarChart implements IVisual {
       .attr("height", this.yScale.bandwidth())
       .attr("font-size", settings.yAxis.textSize)
       .attr("fill", settings.yAxis.fontColor)
+      .attr("font-family", settings.yAxis.fontFamily)
       .style("font-weight", settings.yAxis.isBold ? "bold" : "")
       .style("font-style", settings.yAxis.isItalic ? "italic" : "")
       .text((d) => {
@@ -466,6 +467,8 @@ export class BarChart implements IVisual {
           fontSize: settings.yAxis.textSize + "pt",
           text: d.formattedValue,
         };
+        console.log(this);
+
         let width = Math.abs(this.xScale(<number>d.value) - this.xScale(0));
         let formattedText = textMeasurementService.getTailoredTextOrDefault(
           textProperties,
@@ -545,6 +548,7 @@ export class BarChart implements IVisual {
           // (this.yScale.bandwidth() - height * 2) / 2
         );
       })
+      .attr("font-family", settings.xAxis.fontFamily)
       .attr("height", this.yScale.bandwidth())
       .attr("font-size", settings.xAxis.textSize);
 
@@ -558,8 +562,28 @@ export class BarChart implements IVisual {
       .classed("tspan-category-text", true);
     tSpanCategotyText
       .merge(mergeElement)
-      .text((d) => d.category)
-      .attr("fill", settings.xAxis.categoryColor);
+      .text((d) => {
+        let textProperties: TextProperties = {
+          fontFamily: settings.xAxis.fontFamily,
+          fontSize: settings.xAxis.textSize + "pt",
+          text: d.category,
+        };
+        console.log(this);
+
+        let width = this.width * 0.1;
+        let formattedText = textMeasurementService.getTailoredTextOrDefault(
+          textProperties,
+          width
+        );
+        textProperties.text = formattedText;
+        if (
+          textMeasurementService.measureSvgTextWidth(textProperties) > width
+        ) {
+          return null;
+        } else return formattedText;
+      })
+      .attr("fill", settings.xAxis.categoryColor)
+      .style("font-family", settings.xAxis.fontFamily);
 
     // add span for range values
     let tSpanRangeText = xAxisText
@@ -571,7 +595,26 @@ export class BarChart implements IVisual {
       .classed("tspan-range-text", true);
     tSpanRangeText
       .merge(mergeElement)
-      .text((d) => d.rangeFormattedValue)
+      .text((d) => {
+        let textProperties: TextProperties = {
+          fontFamily: settings.xAxis.fontFamily,
+          fontSize: settings.xAxis.textSize + "pt",
+          text: d.rangeFormattedValue,
+        };
+        console.log(this);
+
+        let width = this.width * 0.1;
+        let formattedText = textMeasurementService.getTailoredTextOrDefault(
+          textProperties,
+          width
+        );
+        textProperties.text = formattedText;
+        if (
+          textMeasurementService.measureSvgTextWidth(textProperties) > width
+        ) {
+          return null;
+        } else return formattedText;
+      })
       .attr("x", (d) => {
         let categoryTextProperties: TextProperties = {
           fontFamily: settings.xAxis.fontFamily,
@@ -607,6 +650,7 @@ export class BarChart implements IVisual {
         (d) => this.yScale(d.category) + this.yScale.bandwidth() * 0.85
       )
       .attr("fill", settings.xAxis.rangeColor)
+      .style("font-family", settings.xAxis.fontFamily)
       .style("font-weight", settings.xAxis.isBold ? "bold" : "")
       .style("font-style", settings.xAxis.isItalic ? "italic" : "");
 
