@@ -209,12 +209,19 @@ export class BarChart implements IVisual {
       .padding(this.model.settings.barShape.barPadding / 100)
       .paddingOuter(outerPadding);
     // TEMP!
-    let offset = this.width * 0.2;
+    let offset = this.width * 0.1;
     this.xScale = scaleLinear()
-      .domain([1.5 * Math.min(this.model.dataMin, 0), this.model.dataMax])
-      .range([0, this.width - offset])
+      .domain([this.model.dataMin, this.model.dataMax])
+      .range([offset, this.width - offset])
       .nice(); // subtracting 40 for padding between the bar and the label
-    if (this.model.dataMax < 0) this.xScale.domain([this.model.dataMin, 0]);
+    if (this.model.dataMax < 0) {
+      this.xScale.domain([this.model.dataMin, 0]);
+      this.xScale.range([offset, this.width]);
+    }
+    if (this.model.dataMin >= 0) {
+      this.xScale.domain([0, this.model.dataMax]);
+      this.xScale.range([0, this.width - offset]);
+    }
 
     this.svg.attr("width", this.width);
     this.svg.attr("height", this.height);
@@ -500,24 +507,30 @@ export class BarChart implements IVisual {
           fontSize: settings.xAxis.textSize + "pt",
           text: d.rangeFormattedValue,
         };
-        let maxWidth = Math.max(
-          textMeasurementService.measureSvgTextWidth(categoryTextProperties),
-          textMeasurementService.measureSvgTextWidth(rangeTextProperties)
+        let categoryWidth = textMeasurementService.measureSvgTextWidth(
+          categoryTextProperties
         );
-        let width = Math.abs(this.xScale(<number>d.value) - this.xScale(0));
-        if (d.minValue)
-          if (d.maxValue > d.value) width = this.xScale(<number>d.maxValue);
+        let rangeWidth =
+          textMeasurementService.measureSvgTextWidth(rangeTextProperties);
 
-        if (
-          textMeasurementService.measureSvgTextWidth(categoryTextProperties) >
-          width
-        ) {
+        if (!d.rangeFormattedValue) {
+          if (d.value < 0) return this.xScale(<number>d.value) - categoryWidth;
+          return this.xScale(<number>d.value) + 8;
+        }
+
+        let maxWidth = Math.max(categoryWidth, rangeWidth);
+
+        let width = Math.abs(this.xScale(<number>d.value) - this.xScale(0));
+        if (d.maxValue > d.value) width = this.xScale(<number>d.maxValue);
+
+        if (categoryWidth > width) {
           return textMeasurementService.measureSvgTextWidth(
             categoryTextProperties
           );
-        } else if (d.value < 0) {
-          return this.xScale(<number>d.minValue) - maxWidth;
-        } else return this.xScale(<number>d.maxValue) + 8;
+        }
+        if (d.value < 0)
+          if (d.minValue) return this.xScale(<number>d.minValue) - maxWidth;
+        if (d.maxValue) return this.xScale(<number>d.maxValue) + 8;
       })
       .attr("y", (d) => {
         let textProperties: TextProperties = {
@@ -596,6 +609,9 @@ export class BarChart implements IVisual {
       .attr("fill", settings.xAxis.rangeColor)
       .style("font-weight", settings.xAxis.isBold ? "bold" : "")
       .style("font-style", settings.xAxis.isItalic ? "italic" : "");
+
+    if (!this.model.dataPoints[0].rangeFormattedValue)
+      xAxisText.selectAll("tspan.tspan-range-text").remove();
 
     tSpanCategotyText.exit().remove();
     tSpanRangeText.exit().remove();
