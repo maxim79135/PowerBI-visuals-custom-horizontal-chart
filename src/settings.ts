@@ -36,11 +36,22 @@ export class BarShape {
   public barPadding: number = 15;
 }
 
-export class XAxis {
+export class CategoryLabel {
   public textSize: number = 10;
   public fontFamily: string = "segoe";
-  public categoryColor: string = "#333333";
-  public rangeColor: string = "#333333";
+  public color: string = "#333333";
+  // public rangeColor: string = "#333333";
+  public isItalic: boolean = false;
+  public isBold: boolean = false;
+  public decimalPlaces: number = 0;
+  // public wordWrap_: boolean = false;
+}
+
+export class RangeLabel {
+  public textSize: number = 10;
+  public fontFamily: string = "segoe";
+  // public categoryColor: string = "#333333";
+  public color: string = "#333333";
   public isItalic: boolean = false;
   public isBold: boolean = false;
   public decimalPlaces: number = 0;
@@ -62,6 +73,7 @@ export class YAxis {
 
 export class BarSettings extends DataViewObjectsParser {
   public barShape: BarShape = new BarShape();
-  public xAxis: XAxis = new XAxis();
+  public categoryLabel: CategoryLabel = new CategoryLabel();
+  public rangeLabel: RangeLabel = new RangeLabel();
   public yAxis: YAxis = new YAxis();
 }

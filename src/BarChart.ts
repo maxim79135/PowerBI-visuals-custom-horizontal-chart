@@ -501,13 +501,13 @@ export class BarChart implements IVisual {
       .merge(mergeElement)
       .attr("x", (d) => {
         let categoryTextProperties: TextProperties = {
-          fontFamily: settings.xAxis.fontFamily,
-          fontSize: settings.xAxis.textSize + "pt",
+          fontFamily: settings.categoryLabel.fontFamily,
+          fontSize: settings.categoryLabel.textSize + "pt",
           text: d.category,
         };
         let rangeTextProperties: TextProperties = {
-          fontFamily: settings.xAxis.fontFamily,
-          fontSize: settings.xAxis.textSize + "pt",
+          fontFamily: settings.rangeLabel.fontFamily,
+          fontSize: settings.rangeLabel.textSize + "pt",
           text: d.rangeFormattedValue,
         };
         let categoryWidth = textMeasurementService.measureSvgTextWidth(
@@ -531,14 +531,13 @@ export class BarChart implements IVisual {
             categoryTextProperties
           );
         }
-        if (d.value < 0)
-          if (d.minValue) return this.xScale(<number>d.minValue) - maxWidth;
-        if (d.maxValue) return this.xScale(<number>d.maxValue) + 8;
+        if (d.minValue >= 0) return this.xScale(<number>d.maxValue) + 8;
+        if (d.maxValue < 0) return this.xScale(<number>d.minValue) - maxWidth;
       })
       .attr("y", (d) => {
         let textProperties: TextProperties = {
-          fontFamily: settings.xAxis.fontFamily,
-          fontSize: settings.xAxis.textSize + "pt",
+          fontFamily: settings.categoryLabel.fontFamily,
+          fontSize: settings.categoryLabel.textSize + "pt",
           text: d.category,
         };
         let height =
@@ -548,9 +547,9 @@ export class BarChart implements IVisual {
           // (this.yScale.bandwidth() - height * 2) / 2
         );
       })
-      .attr("font-family", settings.xAxis.fontFamily)
-      .attr("height", this.yScale.bandwidth())
-      .attr("font-size", settings.xAxis.textSize);
+      // .attr("font-family", settings.categoryLabel.fontFamily)
+      .attr("height", this.yScale.bandwidth());
+    // .attr("font-size", settings.categoryLabel.textSize);
 
     // add span for category name
     let tSpanCategotyText = xAxisText
@@ -564,8 +563,8 @@ export class BarChart implements IVisual {
       .merge(mergeElement)
       .text((d) => {
         let textProperties: TextProperties = {
-          fontFamily: settings.xAxis.fontFamily,
-          fontSize: settings.xAxis.textSize + "pt",
+          fontFamily: settings.categoryLabel.fontFamily,
+          fontSize: settings.categoryLabel.textSize + "pt",
           text: d.category,
         };
         console.log(this);
@@ -582,8 +581,11 @@ export class BarChart implements IVisual {
           return null;
         } else return formattedText;
       })
-      .attr("fill", settings.xAxis.categoryColor)
-      .style("font-family", settings.xAxis.fontFamily);
+      .attr("fill", settings.categoryLabel.color)
+      .style("font-family", settings.categoryLabel.fontFamily)
+      .attr("font-size", settings.categoryLabel.textSize)
+      .style("font-weight", settings.categoryLabel.isBold ? "bold" : "")
+      .style("font-style", settings.categoryLabel.isItalic ? "italic" : "");
 
     // add span for range values
     let tSpanRangeText = xAxisText
@@ -597,8 +599,8 @@ export class BarChart implements IVisual {
       .merge(mergeElement)
       .text((d) => {
         let textProperties: TextProperties = {
-          fontFamily: settings.xAxis.fontFamily,
-          fontSize: settings.xAxis.textSize + "pt",
+          fontFamily: settings.rangeLabel.fontFamily,
+          fontSize: settings.rangeLabel.textSize + "pt",
           text: d.rangeFormattedValue,
         };
         console.log(this);
@@ -617,13 +619,13 @@ export class BarChart implements IVisual {
       })
       .attr("x", (d) => {
         let categoryTextProperties: TextProperties = {
-          fontFamily: settings.xAxis.fontFamily,
-          fontSize: settings.xAxis.textSize + "pt",
+          fontFamily: settings.categoryLabel.fontFamily,
+          fontSize: settings.categoryLabel.textSize + "pt",
           text: d.category,
         };
         let rangeTextProperties: TextProperties = {
-          fontFamily: settings.xAxis.fontFamily,
-          fontSize: settings.xAxis.textSize + "pt",
+          fontFamily: settings.categoryLabel.fontFamily,
+          fontSize: settings.categoryLabel.textSize + "pt",
           text: d.rangeFormattedValue,
         };
         let maxWidth = Math.max(
@@ -649,10 +651,11 @@ export class BarChart implements IVisual {
         "y",
         (d) => this.yScale(d.category) + this.yScale.bandwidth() * 0.85
       )
-      .attr("fill", settings.xAxis.rangeColor)
-      .style("font-family", settings.xAxis.fontFamily)
-      .style("font-weight", settings.xAxis.isBold ? "bold" : "")
-      .style("font-style", settings.xAxis.isItalic ? "italic" : "");
+      .attr("fill", settings.rangeLabel.color)
+      .style("font-family", settings.rangeLabel.fontFamily)
+      .style("font-weight", settings.rangeLabel.isBold ? "bold" : "")
+      .style("font-style", settings.rangeLabel.isItalic ? "italic" : "")
+      .attr("font-size", settings.rangeLabel.textSize);
 
     if (!this.model.dataPoints[0].rangeFormattedValue)
       xAxisText.selectAll("tspan.tspan-range-text").remove();
@@ -819,8 +822,11 @@ export class BarChart implements IVisual {
       case "yAxis":
         this.enumerateYAxis(instances, objectName);
         break;
-      case "xAxis":
-        this.enumerateXAxis(instances, objectName);
+      case "categoryLabel":
+        this.enumerateCategoryLabel(instances, objectName);
+        break;
+      case "rangeLabel":
+        this.enumerateRangeLabel(instances, objectName);
         break;
     }
 
@@ -874,14 +880,35 @@ export class BarChart implements IVisual {
     });
   }
 
-  private enumerateXAxis(
+  private enumerateCategoryLabel(
     instanceEnumeration: VisualObjectInstanceEnumeration,
     objectName: string
   ) {
     this.addAnInstanceToEnumeration(instanceEnumeration, {
       objectName,
       properties: {
-        decimalPlaces: this.model.settings.xAxis.decimalPlaces,
+        decimalPlaces: this.model.settings.categoryLabel.decimalPlaces,
+      },
+      selector: null,
+      validValues: {
+        decimalPlaces: {
+          numberRange: {
+            min: 0,
+            max: 9,
+          },
+        },
+      },
+    });
+  }
+
+  private enumerateRangeLabel(
+    instanceEnumeration: VisualObjectInstanceEnumeration,
+    objectName: string
+  ) {
+    this.addAnInstanceToEnumeration(instanceEnumeration, {
+      objectName,
+      properties: {
+        decimalPlaces: this.model.settings.rangeLabel.decimalPlaces,
       },
       selector: null,
       validValues: {

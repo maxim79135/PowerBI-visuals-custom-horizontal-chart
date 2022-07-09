@@ -133,7 +133,7 @@ export function visualTransform(
             ? <string>dataValue.objects[0]["general"]["formatString"]
             : valueFormatter.getFormatStringByColumn(dataValue.source),
           settings.yAxis.displayUnit,
-          settings.xAxis.decimalPlaces,
+          settings.categoryLabel.decimalPlaces,
           false,
           false,
           "",
@@ -151,7 +151,7 @@ export function visualTransform(
             ? <string>dataValue.objects[0]["general"]["formatString"]
             : valueFormatter.getFormatStringByColumn(dataValue.source),
           settings.yAxis.displayUnit,
-          settings.xAxis.decimalPlaces,
+          settings.categoryLabel.decimalPlaces,
           false,
           false,
           "",
