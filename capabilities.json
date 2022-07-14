@@ -106,7 +106,7 @@
                             },
                             {
                                 "displayName": "Segoe UI",
-                                "value": "segoe"
+                                "value": "'Segoe UI', wf_segoe-ui_normal, helvetica, arial, sans-serif"
                             },
                             {
                                 "displayName": "Segoe UI Light",
@@ -259,7 +259,7 @@
                             },
                             {
                                 "displayName": "Segoe UI",
-                                "value": "segoe"
+                                "value": "'Segoe UI', wf_segoe-ui_normal, helvetica, arial, sans-serif"
                             },
                             {
                                 "displayName": "Segoe UI Light",
@@ -430,7 +430,7 @@
                             },
                             {
                                 "displayName": "Segoe UI",
-                                "value": "segoe"
+                                "value": "'Segoe UI', wf_segoe-ui_normal, helvetica, arial, sans-serif"
                             },
                             {
                                 "displayName": "Segoe UI Light",
@@ -549,6 +549,13 @@
                 "minHeight": {
                     "displayName": "Min bar height (px)",
                     "displayNameKey": "minHeight",
+                    "type": {
+                        "integer": true
+                    }
+                },
+                "maxWidth": {
+                    "displayName": "Max bar width (%)",
+                    "displayNameKey": "maxWidth",
                     "type": {
                         "integer": true
                     }

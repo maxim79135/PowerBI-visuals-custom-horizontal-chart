@@ -47,6 +47,7 @@ export interface IDataPoint {
   width: number;
   selected: boolean;
   tooltipValues: ITooltipValue[];
+  categoryX: number;
 }
 
 export interface ITooltipValue {

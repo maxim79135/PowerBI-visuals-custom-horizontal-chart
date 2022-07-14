@@ -204,8 +204,17 @@ export function visualTransform(
         } else if (settings.yAxis.displayUnit > 1) {
           minValueNew = dataPoint.minFormattedValue.split(" ")[0];
         }
-        dataPoint.rangeFormattedValue =
-          minValueNew + "-" + dataPoint.maxFormattedValue;
+        if (!dataPoint.minValue) {
+          if (dataPoint.maxValue)
+            dataPoint.rangeFormattedValue = dataPoint.maxFormattedValue;
+          else dataPoint.rangeFormattedValue = "";
+        } else {
+          if (!dataPoint.maxValue)
+            dataPoint.rangeFormattedValue = dataPoint.minFormattedValue;
+          else
+            dataPoint.rangeFormattedValue =
+              minValueNew + "-" + dataPoint.maxFormattedValue;
+        }
       }
     }
 

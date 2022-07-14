@@ -33,12 +33,14 @@ export class BarShape {
   public color: string = "#01b8aa";
   public showAll: boolean = false;
   public minHeight: number = 30;
+  public maxWidth: number = 70;
   public barPadding: number = 15;
 }
 
 export class CategoryLabel {
   public textSize: number = 10;
-  public fontFamily: string = "segoe";
+  public fontFamily: string =
+    "'Segoe UI', wf_segoe-ui_normal, helvetica, arial, sans-serif";
   public color: string = "#333333";
   // public rangeColor: string = "#333333";
   public isItalic: boolean = false;
@@ -49,7 +51,8 @@ export class CategoryLabel {
 
 export class RangeLabel {
   public textSize: number = 10;
-  public fontFamily: string = "segoe";
+  public fontFamily: string =
+    "'Segoe UI', wf_segoe-ui_normal, helvetica, arial, sans-serif";
   // public categoryColor: string = "#333333";
   public color: string = "#333333";
   public isItalic: boolean = false;
@@ -61,7 +64,8 @@ export class RangeLabel {
 export class YAxis {
   public textPosition: string = "insideBar";
   public textSize: number = 10;
-  public fontFamily: string = "segoe";
+  public fontFamily: string =
+    "'Segoe UI', wf_segoe-ui_normal, helvetica, arial, sans-serif";
   public fontColor: string = "#333333";
   public isItalic: boolean = false;
   public isBold: boolean = false;
