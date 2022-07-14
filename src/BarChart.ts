@@ -467,7 +467,6 @@ export class BarChart implements IVisual {
           fontSize: settings.yAxis.textSize + "pt",
           text: d.formattedValue,
         };
-        console.log(this);
 
         let width = Math.abs(this.xScale(<number>d.value) - this.xScale(0));
         let formattedText = textMeasurementService.getTailoredTextOrDefault(
@@ -567,7 +566,6 @@ export class BarChart implements IVisual {
           fontSize: settings.categoryLabel.textSize + "pt",
           text: d.category,
         };
-        console.log(this);
 
         let width = this.width * 0.1;
         let formattedText = textMeasurementService.getTailoredTextOrDefault(
@@ -598,12 +596,12 @@ export class BarChart implements IVisual {
     tSpanRangeText
       .merge(mergeElement)
       .text((d) => {
+        if (!d.rangeFormattedValue) return null;
         let textProperties: TextProperties = {
           fontFamily: settings.rangeLabel.fontFamily,
           fontSize: settings.rangeLabel.textSize + "pt",
           text: d.rangeFormattedValue,
         };
-        console.log(this);
 
         let width = this.width * 0.1;
         let formattedText = textMeasurementService.getTailoredTextOrDefault(
@@ -624,28 +622,28 @@ export class BarChart implements IVisual {
           text: d.category,
         };
         let rangeTextProperties: TextProperties = {
-          fontFamily: settings.categoryLabel.fontFamily,
-          fontSize: settings.categoryLabel.textSize + "pt",
+          fontFamily: settings.rangeLabel.fontFamily,
+          fontSize: settings.rangeLabel.textSize + "pt",
           text: d.rangeFormattedValue,
         };
-        let maxWidth = Math.max(
-          textMeasurementService.measureSvgTextWidth(categoryTextProperties),
-          textMeasurementService.measureSvgTextWidth(rangeTextProperties)
+        let categoryWidth = textMeasurementService.measureSvgTextWidth(
+          categoryTextProperties
         );
-        let width = Math.abs(this.xScale(<number>d.value) - this.xScale(0));
-        if (d.minValue)
-          if (d.maxValue > d.value) width = this.xScale(<number>d.maxValue);
+        let rangeWidth =
+          textMeasurementService.measureSvgTextWidth(rangeTextProperties);
 
-        if (
-          textMeasurementService.measureSvgTextWidth(categoryTextProperties) >
-          width
-        ) {
+        let maxWidth = Math.max(categoryWidth, rangeWidth);
+
+        let width = Math.abs(this.xScale(<number>d.value) - this.xScale(0));
+        if (d.maxValue > d.value) width = this.xScale(<number>d.maxValue);
+
+        if (categoryWidth > width) {
           return textMeasurementService.measureSvgTextWidth(
             categoryTextProperties
           );
-        } else if (d.value < 0) {
-          return this.xScale(<number>d.minValue) - maxWidth;
-        } else return this.xScale(<number>d.maxValue) + 8;
+        }
+        if (d.minValue >= 0) return this.xScale(<number>d.maxValue) + 8;
+        if (d.maxValue < 0) return this.xScale(<number>d.minValue) - maxWidth;
       })
       .attr(
         "y",
