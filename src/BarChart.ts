@@ -317,8 +317,8 @@ export class BarChart implements IVisual {
       .attr("width", (d) => {
         let minX = this.xScale(<number>d.minValue);
         let maxX = this.xScale(<number>d.maxValue);
-        if (!minX) minX = maxX;
-        if (!maxX) maxX = minX;
+        if (!d.minValue) minX = maxX;
+        if (!d.maxValue) maxX = minX;
         return maxX - minX;
       })
       .style("fill", "#ffffff")
@@ -346,8 +346,8 @@ export class BarChart implements IVisual {
       .attr("width", (d) => {
         let minX = this.xScale(<number>d.minValue);
         let maxX = this.xScale(<number>d.maxValue);
-        if (!minX) minX = maxX;
-        if (!maxX) maxX = minX;
+        if (!d.minValue) minX = maxX;
+        if (!d.maxValue) maxX = minX;
         return maxX - minX;
       })
       .style("fill", (d) => {
@@ -367,57 +367,61 @@ export class BarChart implements IVisual {
       })
       .attr("fill-opacity", BarChart.Config.valueRangesOpacity);
 
-    if (this.model.dataPoints && this.model.dataPoints[0].minValue) {
-      let minValueLine = bars.selectAll("line.minValueLine").data((d) => [d]);
-      mergeElement = minValueLine
-        .enter()
-        .append<SVGElement>("line")
-        .classed("minValueLine", true);
-      minValueLine
-        .merge(mergeElement)
-        .attr("x1", (d) => this.xScale(<number>d.minValue))
-        .attr(
-          "y1",
-          (d) => this.yScale(d.category) - BarChart.Config.lineRangePadding
-        )
-        .attr("x2", (d) => this.xScale(<number>d.minValue))
-        .attr(
-          "y2",
-          (d) =>
-            this.yScale(d.category) +
-            this.yScale.bandwidth() +
-            BarChart.Config.lineRangePadding
-        )
-        .style("stroke", (d) => d.color)
-        .style("stroke-width", 4);
-      minValueLine.exit().remove();
-    } else bars.selectAll("line.minValueLine").remove();
+    let minValueLine = bars.selectAll("line.minValueLine").data((d) => [d]);
+    mergeElement = minValueLine
+      .enter()
+      .append<SVGElement>("line")
+      .classed("minValueLine", true);
+    minValueLine
+      .merge(mergeElement)
+      .attr("x1", (d) => this.xScale(<number>d.minValue))
+      .attr(
+        "y1",
+        (d) => this.yScale(d.category) - BarChart.Config.lineRangePadding
+      )
+      .attr("x2", (d) => this.xScale(<number>d.minValue))
+      .attr(
+        "y2",
+        (d) =>
+          this.yScale(d.category) +
+          this.yScale.bandwidth() +
+          BarChart.Config.lineRangePadding
+      )
+      .style("stroke", (d) => d.color)
+      .style("stroke-width", 4);
+    minValueLine.exit().remove();
+    bars
+      .filter((d) => !d.maxValue || !d.minValue)
+      .selectAll("line.minValueLine")
+      .remove();
 
-    if (this.model.dataPoints && this.model.dataPoints[0].maxValue) {
-      let maxValueLine = bars.selectAll("line.maxValueLine").data((d) => [d]);
-      mergeElement = maxValueLine
-        .enter()
-        .append<SVGElement>("line")
-        .classed("maxValueLine", true);
-      maxValueLine
-        .merge(mergeElement)
-        .attr("x1", (d) => this.xScale(<number>d.maxValue))
-        .attr(
-          "y1",
-          (d) => this.yScale(d.category) - BarChart.Config.lineRangePadding
-        )
-        .attr("x2", (d) => this.xScale(<number>d.maxValue))
-        .attr(
-          "y2",
-          (d) =>
-            this.yScale(d.category) +
-            this.yScale.bandwidth() +
-            BarChart.Config.lineRangePadding
-        )
-        .style("stroke", (d) => d.color)
-        .style("stroke-width", 4);
-      maxValueLine.exit().remove();
-    } else bars.selectAll("line.maxValueLine").remove();
+    let maxValueLine = bars.selectAll("line.maxValueLine").data((d) => [d]);
+    mergeElement = maxValueLine
+      .enter()
+      .append<SVGElement>("line")
+      .classed("maxValueLine", true);
+    maxValueLine
+      .merge(mergeElement)
+      .attr("x1", (d) => this.xScale(<number>d.maxValue))
+      .attr(
+        "y1",
+        (d) => this.yScale(d.category) - BarChart.Config.lineRangePadding
+      )
+      .attr("x2", (d) => this.xScale(<number>d.maxValue))
+      .attr(
+        "y2",
+        (d) =>
+          this.yScale(d.category) +
+          this.yScale.bandwidth() +
+          BarChart.Config.lineRangePadding
+      )
+      .style("stroke", (d) => d.color)
+      .style("stroke-width", 4);
+    maxValueLine.exit().remove();
+    bars
+      .filter((d) => !d.maxValue || !d.minValue)
+      .selectAll("line.maxValueLine")
+      .remove();
 
     defs.exit().remove();
     valueRangesRect.exit().remove();
@@ -520,7 +524,7 @@ export class BarChart implements IVisual {
         let rangeWidth =
           textMeasurementService.measureSvgTextWidth(rangeTextProperties);
 
-        if (!d.rangeFormattedValue) {
+        if (!d.rangeFormattedValue || !d.minValue || !d.maxValue) {
           if (d.value < 0) {
             d.categoryX = this.xScale(<number>d.value) - categoryWidth;
             return;

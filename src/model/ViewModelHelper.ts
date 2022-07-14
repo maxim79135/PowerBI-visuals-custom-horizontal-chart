@@ -185,7 +185,11 @@ export function visualTransform(
         if (minLocal < dataMin) dataMin = minLocal;
       }
 
-      if (dataPoint.minValue > dataPoint.maxValue) {
+      if (
+        dataPoint.minValue &&
+        dataPoint.maxValue &&
+        dataPoint.minValue > dataPoint.maxValue
+      ) {
         let tmp = dataPoint.minValue;
         dataPoint.minValue = dataPoint.maxValue;
         dataPoint.maxValue = tmp;
@@ -194,8 +198,8 @@ export function visualTransform(
         dataPoint.minFormattedValue = dataPoint.maxFormattedValue;
         dataPoint.maxFormattedValue = tmp;
       }
+      let minValueNew: string = dataPoint.minFormattedValue;
       if (dataPoint.minValue && dataPoint.maxValue) {
-        let minValueNew: string = dataPoint.minFormattedValue;
         if (
           dataPoint.minFormattedValue.endsWith("%") &&
           dataPoint.maxFormattedValue.endsWith("%")
@@ -204,18 +208,11 @@ export function visualTransform(
         } else if (settings.yAxis.displayUnit > 1) {
           minValueNew = dataPoint.minFormattedValue.split(" ")[0];
         }
-        if (!dataPoint.minValue) {
-          if (dataPoint.maxValue)
-            dataPoint.rangeFormattedValue = dataPoint.maxFormattedValue;
-          else dataPoint.rangeFormattedValue = "";
-        } else {
-          if (!dataPoint.maxValue)
-            dataPoint.rangeFormattedValue = dataPoint.minFormattedValue;
-          else
-            dataPoint.rangeFormattedValue =
-              minValueNew + "-" + dataPoint.maxFormattedValue;
-        }
+        dataPoint.rangeFormattedValue =
+          minValueNew + "-" + dataPoint.maxFormattedValue;
       }
+      if (!dataPoint.minValue || !dataPoint.maxValue)
+        dataPoint.rangeFormattedValue = null;
     }
 
     if (category && category.objects && category.objects[i]) {
