@@ -430,6 +430,7 @@ export class BarChart implements IVisual {
   public drawYAxis() {
     let settings = this.model.settings;
     let bars = this.barContainer.selectAll("g.bar").data(this.model.dataPoints);
+    bars.selectAll("text.yAxis-text").remove();
     let yAxisText = bars.selectAll("text.yAxis-text").data((d) => [d]);
     let mergeElement = yAxisText
       .enter()
@@ -500,6 +501,7 @@ export class BarChart implements IVisual {
   public drawXAxis() {
     let settings = this.model.settings;
     let bars = this.barContainer.selectAll("g.bar").data(this.model.dataPoints);
+    bars.selectAll("text.xAxis-text").remove();
     let xAxisText = bars.selectAll("text.xAxis-text").data((d) => [d]);
     let mergeElement = xAxisText
       .enter()
@@ -540,11 +542,11 @@ export class BarChart implements IVisual {
         let width = Math.abs(this.xScale(<number>d.value) - this.xScale(0));
         if (d.maxValue > d.value) width = this.xScale(<number>d.maxValue);
 
-        if (categoryWidth > width) {
-          return textMeasurementService.measureSvgTextWidth(
-            categoryTextProperties
-          );
-        }
+        // if (categoryWidth > width) {
+        //   return textMeasurementService.measureSvgTextWidth(
+        //     categoryTextProperties
+        //   );
+        // }
         let maxValue = Math.max(<number>d.value, <number>d.maxValue);
         let minValue = Math.min(<number>d.value, <number>d.minValue);
         if (d.minValue >= 0) {
@@ -632,6 +634,10 @@ export class BarChart implements IVisual {
       .style("font-weight", settings.categoryLabel.isBold ? "bold" : "")
       .style("font-style", settings.categoryLabel.isItalic ? "italic" : "");
 
+    // clear category, if not show
+    if (!settings.categoryLabel.show)
+      xAxisText.selectAll("tspan.tspan-category-text").remove();
+
     // add span for range values
     let tSpanRangeText = xAxisText
       .selectAll("tspan.tspan-range-text")
@@ -696,8 +702,8 @@ export class BarChart implements IVisual {
       .style("font-style", settings.rangeLabel.isItalic ? "italic" : "")
       .attr("font-size", settings.rangeLabel.textSize);
 
-    if (!this.model.dataPoints[0].rangeFormattedValue)
-      xAxisText.selectAll("tspan.tspan-range-text").remove();
+    // if (!this.model.dataPoints[0].rangeFormattedValue)
+    //   xAxisText.selectAll("tspan.tspan-range-text").remove();
 
     tSpanCategotyText.exit().remove();
     tSpanRangeText.exit().remove();
@@ -706,26 +712,6 @@ export class BarChart implements IVisual {
 
   public getTooltipData(value: IDataPoint): VisualTooltipDataItem[] {
     let tooltip: VisualTooltipDataItem[] = [];
-
-    tooltip.push({
-      // header: value.category,
-      displayName: value.category,
-      value: value.formattedValue,
-    });
-
-    if (value.minValue) {
-      tooltip.push({
-        displayName: value.displayNameMinValue,
-        value: value.minFormattedValue,
-      });
-    }
-    if (value.maxValue) {
-      tooltip.push({
-        displayName: value.displayNameMaxValue,
-        value: value.maxFormattedValue,
-      });
-    }
-
     value.tooltipValues.forEach((tooltipValue) => {
       tooltip.push({
         displayName: tooltipValue.displayName,

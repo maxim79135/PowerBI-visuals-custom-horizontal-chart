@@ -38,6 +38,7 @@ export class BarShape {
 }
 
 export class CategoryLabel {
+  public show: boolean = true;
   public textSize: number = 10;
   public fontFamily: string =
     "'Segoe UI', wf_segoe-ui_normal, helvetica, arial, sans-serif";

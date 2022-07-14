@@ -4,7 +4,7 @@
         "displayName": "Custom horizontal bar chart",
         "guid": "horizontalBarChartCDDBFB5E982245ECAA3DAC91245BB7ED",
         "visualClassName": "BarChart",
-        "version": "1.1.5",
+        "version": "1.1.7",
         "description": "Custom horizontal bar chart",
         "supportUrl": "123",
         "gitHubUrl": "https://github.com/maxim79135/PowerBI-visuals-custom-horizontal-chart"

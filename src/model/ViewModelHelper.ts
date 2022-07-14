@@ -122,6 +122,24 @@ export function visualTransform(
           "",
           host.locale
         );
+
+        let tooltipValue: ITooltipValue = {
+          displayName: dataValue.source.displayName,
+          dataLabel: prepareMeasureText(
+            value,
+            valueType,
+            dataValue.objects
+              ? <string>dataValue.objects[0]["general"]["formatString"]
+              : valueFormatter.getFormatStringByColumn(dataValue.source),
+            1,
+            0,
+            false,
+            false,
+            "",
+            host.locale
+          ),
+        };
+        dataPoint.tooltipValues.push(tooltipValue);
       }
       if (dataValue.source.roles["minMeasureValue"]) {
         dataPoint.minValue =
@@ -140,6 +158,24 @@ export function visualTransform(
           host.locale
         );
         dataPoint.displayNameMinValue = dataValue.source.displayName;
+        
+        let tooltipValue: ITooltipValue = {
+          displayName: dataValue.source.displayName,
+          dataLabel: prepareMeasureText(
+            value,
+            valueType,
+            dataValue.objects
+              ? <string>dataValue.objects[0]["general"]["formatString"]
+              : valueFormatter.getFormatStringByColumn(dataValue.source),
+            1,
+            0,
+            false,
+            false,
+            "",
+            host.locale
+          ),
+        };
+        dataPoint.tooltipValues.push(tooltipValue);
       }
       if (dataValue.source.roles["maxMeasureValue"]) {
         dataPoint.maxValue =
@@ -158,6 +194,24 @@ export function visualTransform(
           host.locale
         );
         dataPoint.displayNameMaxValue = dataValue.source.displayName;
+
+        let tooltipValue: ITooltipValue = {
+          displayName: dataValue.source.displayName,
+          dataLabel: prepareMeasureText(
+            value,
+            valueType,
+            dataValue.objects
+              ? <string>dataValue.objects[0]["general"]["formatString"]
+              : valueFormatter.getFormatStringByColumn(dataValue.source),
+            1,
+            0,
+            false,
+            false,
+            "",
+            host.locale
+          ),
+        };
+        dataPoint.tooltipValues.push(tooltipValue);
       }
 
       if (dataValue.source.roles["tooltip"]) {
@@ -174,7 +228,7 @@ export function visualTransform(
             false,
             false,
             "",
-            "ru-RU"
+            host.locale
           ),
         };
         dataPoint.tooltipValues.push(tooltipValue);

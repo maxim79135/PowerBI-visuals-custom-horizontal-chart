@@ -49,7 +49,7 @@ export function prepareMeasureText(
       if (!(isNaN(value as number) && suppressBlankAndNaN)) {
         valueFormatted = formatMeasure(value as number, {
           format: format,
-          value: displayUnit === 0 ? (value as number) : displayUnit,
+          value: displayUnit == 0 ? (value as number) : displayUnit,
           precision: precision,
           allowFormatBeautification: false,
           cultureSelector: culture,
