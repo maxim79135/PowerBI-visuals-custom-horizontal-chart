@@ -109,6 +109,7 @@ export class BarChart implements IVisual {
     valueRangesOpacity: 0.8,
     backgroundOpacity: 0.5,
     barOpacity: 1,
+    textPadding: 8
   };
 
   private host: IVisualHost;
@@ -213,8 +214,8 @@ export class BarChart implements IVisual {
       ((100 - this.model.settings.barShape.maxWidth) / 100) * this.width;
     this.xScale = scaleLinear()
       .domain([this.model.dataMin, this.model.dataMax])
-      .range([offset, this.width - offset])
-      .nice(); // subtracting 40 for padding between the bar and the label
+      .range([offset, this.width - offset]);
+    // .nice();
     if (this.model.dataMax < 0) {
       this.xScale.domain([this.model.dataMin, 0]);
       this.xScale.range([offset, this.width]);
@@ -353,7 +354,7 @@ export class BarChart implements IVisual {
       .style("fill", (d) => {
         defs
           .append("pattern")
-          .attr("id", d.category)
+          .attr("id", String(d.id))
           .attr("width", "8")
           .attr("height", "8")
           .attr("patternUnits", "userSpaceOnUse")
@@ -363,7 +364,7 @@ export class BarChart implements IVisual {
           .attr("height", "8")
           .attr("transform", "translate(0,0)")
           .attr("fill", d.color);
-        return "url(#" + d.category + ")";
+        return "url(#" + String(d.id) + ")";
       })
       .attr("fill-opacity", BarChart.Config.valueRangesOpacity);
 
@@ -466,7 +467,7 @@ export class BarChart implements IVisual {
         );
       })
       .attr("height", this.yScale.bandwidth())
-      .attr("font-size", settings.yAxis.textSize)
+      .attr("font-size", settings.yAxis.textSize + "pt")
       .attr("fill", settings.yAxis.fontColor)
       .attr("font-family", settings.yAxis.fontFamily)
       .style("font-weight", settings.yAxis.isBold ? "bold" : "")
@@ -550,11 +551,12 @@ export class BarChart implements IVisual {
         let maxValue = Math.max(<number>d.value, <number>d.maxValue);
         let minValue = Math.min(<number>d.value, <number>d.minValue);
         if (d.minValue >= 0) {
-          d.categoryX = this.xScale(maxValue) + 8;
+          d.categoryX = this.xScale(maxValue) + BarChart.Config.textPadding;
           return;
         }
         if (d.maxValue < 0) {
-          d.categoryX = this.xScale(minValue) - maxWidth;
+          d.categoryX = this.xScale(minValue) - maxWidth - BarChart.Config.textPadding;
+          if (d.categoryX < 0) d.categoryX = 0;
           return;
         }
       })
@@ -597,10 +599,9 @@ export class BarChart implements IVisual {
           fontSize: settings.rangeLabel.textSize + "pt",
           text: d.rangeFormattedValue,
         };
-
         let width: number;
-        if (d.value > 0) {
-          width = Math.max(
+        if (d.minValue > 0) {
+          width = Math.min(
             this.width - d.categoryX,
             ((100 - settings.barShape.maxWidth) / 100) * this.width
           );
@@ -611,8 +612,8 @@ export class BarChart implements IVisual {
           let rangeWidth =
             textMeasurementService.measureSvgTextWidth(rangeTextProperties);
           let maxWidth = Math.max(categoryWidth, rangeWidth);
-          width = Math.max(
-            d.categoryX + maxWidth,
+          width = Math.min(
+            this.xScale(<number>d.minValue) - BarChart.Config.textPadding,
             ((100 - settings.barShape.maxWidth) / 100) * this.width
           );
         }
@@ -630,7 +631,7 @@ export class BarChart implements IVisual {
       })
       .attr("fill", settings.categoryLabel.color)
       .style("font-family", settings.categoryLabel.fontFamily)
-      .attr("font-size", settings.categoryLabel.textSize)
+      .attr("font-size", settings.categoryLabel.textSize + "pt")
       .style("font-weight", settings.categoryLabel.isBold ? "bold" : "")
       .style("font-style", settings.categoryLabel.isItalic ? "italic" : "");
 
@@ -662,8 +663,8 @@ export class BarChart implements IVisual {
         };
 
         let width: number;
-        if (d.value > 0) {
-          width = Math.max(
+        if (d.minValue > 0) {
+          width = Math.min(
             this.width - d.categoryX,
             ((100 - settings.barShape.maxWidth) / 100) * this.width
           );
@@ -674,8 +675,8 @@ export class BarChart implements IVisual {
           let rangeWidth =
             textMeasurementService.measureSvgTextWidth(rangeTextProperties);
           let maxWidth = Math.max(categoryWidth, rangeWidth);
-          width = Math.max(
-            d.categoryX + maxWidth,
+          width = Math.min(
+            this.xScale(<number>d.minValue) - BarChart.Config.textPadding,
             ((100 - settings.barShape.maxWidth) / 100) * this.width
           );
         }
@@ -700,7 +701,7 @@ export class BarChart implements IVisual {
       .style("font-family", settings.rangeLabel.fontFamily)
       .style("font-weight", settings.rangeLabel.isBold ? "bold" : "")
       .style("font-style", settings.rangeLabel.isItalic ? "italic" : "")
-      .attr("font-size", settings.rangeLabel.textSize);
+      .attr("font-size", settings.rangeLabel.textSize + "pt");
 
     // if (!this.model.dataPoints[0].rangeFormattedValue)
     //   xAxisText.selectAll("tspan.tspan-range-text").remove();
